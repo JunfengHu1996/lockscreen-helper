@@ -25,7 +25,7 @@
           v-show="mode === 'schedule'"
           :time-value="scheduleTimeValue"
           :is-scheduled="isScheduled"
-          :formatted-time="formatScheduleTime"
+          :formatted-time="formattedScheduleTime"
           @start="startScheduleTimer"
           @cancel="cancelSchedule"
           @update:time-value="scheduleTimeValue = $event"
@@ -43,7 +43,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useTimer } from './composables/useTimer'
 import { MODES, TIME_LIMITS } from './constants'
 
@@ -78,6 +78,11 @@ const {
   formatTime: formatScheduleTime
 } = useTimer({ isScheduleMode: true })
 
+// 计算属性：格式化的定时时间
+const formattedScheduleTime = computed(() => {
+  return formatScheduleTime(scheduleTime.value)
+})
+
 // ============ 常量和计算属性 ============
 const tabs = [
   { value: MODES.COUNTDOWN, label: '倒计时锁屏' },
@@ -109,6 +114,14 @@ const startScheduleTimer = () => {
   const scheduleDuration = calculateScheduleDuration(scheduleTimeValue.value)
   if (scheduleDuration <= 0) return
   
+  const targetDate = new Date(scheduleTimeValue.value)
+  const scheduleDate = new Date()
+  scheduleDate.setHours(targetDate.getHours(), targetDate.getMinutes(), 0, 0)
+  if (scheduleDate <= new Date()) {
+    scheduleDate.setDate(scheduleDate.getDate() + 1)
+  }
+  
+  scheduleTime.value = scheduleDate
   startSchedule(scheduleDuration)
   window.api.send('start-lock-timer', Math.floor(scheduleDuration / 1000))
 }
