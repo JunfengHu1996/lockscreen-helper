@@ -68,29 +68,123 @@ watch(localTimeValue, (newValue) => {
 
 .time-picker-container {
   width: 100%;
+  margin-bottom: var(--spacing-md);
 }
 
 .time-picker {
   width: 100%;
 }
 
+/* Element Plus 样式覆盖 */
+:deep(.el-input__wrapper) {
+  background-color: rgba(255, 255, 255, 0.5) !important;
+  border: 2px solid transparent !important;
+  box-shadow: var(--shadow-sm) !important;
+  transition: var(--transition-normal);
+  border-radius: var(--radius-md);
+  height: 60px;
+  padding: 0 var(--spacing-md);
+}
+
+:deep(.el-input__inner) {
+  font-size: 1.5rem !important;
+  color: var(--text-primary) !important;
+  font-weight: 600 !important;
+  height: 60px !important;
+}
+
+:deep(.el-input__wrapper:hover) {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md) !important;
+  background-color: rgba(255, 255, 255, 0.8) !important;
+}
+
+:deep(.el-input__wrapper.is-focus) {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2) !important;
+  transform: translateY(-2px);
+  background-color: rgba(255, 255, 255, 0.8) !important;
+}
+
+:deep(.el-input__wrapper.is-disabled) {
+  background-color: rgba(255, 255, 255, 0.5) !important;
+  cursor: not-allowed;
+  opacity: 0.8;
+  transform: none !important;
+}
+
+/* 调整时间选择器弹出框样式 */
+:deep(.el-time-panel) {
+  border: none;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(10px);
+  background-color: var(--bg-light);
+}
+
+:deep(.el-time-spinner__item) {
+  color: var(--text-primary);
+  font-size: 1rem;
+  height: 32px;
+  line-height: 32px;
+}
+
+:deep(.el-time-spinner__item.active:not(.disabled)) {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+:deep(.el-time-panel__footer) {
+  border-top: 1px solid rgba(102, 126, 234, 0.1);
+}
+
+:deep(.el-time-panel__btn) {
+  color: var(--primary);
+  border: none;
+  background: transparent;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+:deep(.el-time-panel__btn.confirm) {
+  font-weight: 600;
+}
+
 .action-button {
   width: 100%;
   height: 56px;
   font-size: 1.125rem;
+  font-weight: 600;
   background: var(--bg-gradient);
   color: white;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: var(--transition-normal);
   box-shadow: var(--shadow-md);
+  letter-spacing: 1px;
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
   line-height: 1.5;
-  font-weight: 600;
-  letter-spacing: 0.5px;
+}
+
+.action-button::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(rgba(255, 255, 255, 0.2), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.action-button:not(:disabled):hover::after {
+  opacity: 1;
 }
 
 .action-button:not(:disabled):hover {
@@ -156,22 +250,4 @@ watch(localTimeValue, (newValue) => {
   opacity: 0;
 }
 
-/* Element Plus 样式覆盖 */
-:deep(.el-input__wrapper) {
-  background-color: var(--bg-light) !important;
-  border: 1px solid var(--primary) !important;
-  box-shadow: none !important;
-}
-
-:deep(.el-input__inner) {
-  font-size: 1.125rem !important;
-  color: var(--text-primary) !important;
-  height: 44px !important;
-}
-
-:deep(.el-input__wrapper:hover),
-:deep(.el-input__wrapper.is-focus) {
-  border-color: var(--primary-dark) !important;
-  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2) !important;
-}
 </style>
