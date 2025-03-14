@@ -91,6 +91,26 @@ watch(localTimeValue, (newValue) => {
   color: var(--text-primary) !important;
   font-weight: 600 !important;
   height: 60px !important;
+  line-height: 60px !important; /* 确保文字垂直居中 */
+
+  &::placeholder {
+    color: var(--text-secondary) !important;
+    font-size: 1.125rem !important;
+    font-weight: 400 !important;
+    opacity: 0.7;
+  }
+}
+
+:deep(.el-input__prefix) {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+:deep(.el-input__suffix) {
+  display: flex;
+  align-items: center;
+  height: 100%;
 }
 
 :deep(.el-input__wrapper:hover) {
