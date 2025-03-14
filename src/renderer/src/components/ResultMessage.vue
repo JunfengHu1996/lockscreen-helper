@@ -22,13 +22,14 @@ defineProps({
 
 <style scoped>
 .result-message {
-  margin-top: var(--spacing-lg);
+  width: 100%;
   padding: var(--spacing-md);
   border-radius: var(--radius-sm);
-  font-size: 1rem;
+  font-size: 1.125rem;
   font-weight: 500;
   text-align: center;
   transition: var(--transition-normal);
+  margin-bottom: var(--spacing-sm);
 }
 
 .success {

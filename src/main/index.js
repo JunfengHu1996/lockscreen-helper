@@ -1,14 +1,18 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron';
+import { app, shell, BrowserWindow, ipcMain, screen } from 'electron';
 import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
 import { exec } from 'child_process';
 
 function createWindow() {
+  // 获取主屏幕尺寸
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { height } = primaryDisplay.workAreaSize;
+  
   // 创建浏览器窗口
   const mainWindow = new BrowserWindow({
-    width: 600,
-    height: 700,
+    width: 500,
+    height: Math.floor(height * 0.9), // 设置为屏幕高度的80%
     show: false,
     autoHideMenuBar: true,
     resizable: false,

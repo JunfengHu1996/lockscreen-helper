@@ -34,22 +34,28 @@ defineEmits(['change'])
   border-radius: var(--radius-md);
   overflow: hidden;
   background-color: rgba(102, 126, 234, 0.1);
-  padding: 0.25rem;
+  padding: 0.5rem;
+  align-items: center;
 }
 
 .tab-button {
   flex: 1;
-  padding: 0.75rem 1.25rem;
+  padding: 0.5rem 1.25rem;
   border: none;
   background: none;
   color: var(--text-secondary);
   cursor: pointer;
   transition: var(--transition-normal);
-  font-size: 1.0625rem;
+  font-size: 1rem;
   border-radius: var(--radius-sm);
   white-space: nowrap;
   letter-spacing: 0.5px;
   font-weight: 500;
+  line-height: 1.5;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .tab-button.active {

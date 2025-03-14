@@ -16,11 +16,16 @@ defineProps({
 <style scoped>
 .page-header {
   text-align: center;
-  padding: var(--spacing-lg) var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-md);
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
 }
 
 .title {
-  font-size: 2.5rem;
+  font-size: 1.75rem;
   font-weight: 600;
   color: white;
   margin: 0;
@@ -30,7 +35,7 @@ defineProps({
 
 @media (max-width: 480px) {
   .title {
-    font-size: 2rem;
+    font-size: 1.5rem;
   }
 }
 </style>

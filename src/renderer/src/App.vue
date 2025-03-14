@@ -2,7 +2,7 @@
   <div class="app-container">
     <page-header :title="title" />
     <main class="main-content">
-      <div class="card">
+      <div class="card" :class="{ 'card--expanded': isCountingDown || isScheduled }">
         <!-- 模式切换 -->
         <mode-tabs
           :current-mode="mode"
@@ -17,6 +17,7 @@
           :is-counting="isCountingDown"
           :countdown="countdown"
           @start="startCountdownTimer"
+          @cancel="cancelCountdown"
           @update:time="lockTime = $event"
         />
 
@@ -32,11 +33,13 @@
         />
 
         <!-- 操作结果提示 -->
-        <result-message
-          v-if="lockResult"
-          :type="lockResult.success ? 'success' : 'error'"
-          :message="lockResult.success ? '屏幕已锁定' : '锁屏失败'"
-        />
+        <div class="result-container">
+          <result-message
+            v-if="lockResult"
+            :type="lockResult.success ? 'success' : 'error'"
+            :message="lockResult.success ? '屏幕已锁定' : '锁屏失败'"
+          />
+        </div>
       </div>
     </main>
   </div>
@@ -126,9 +129,14 @@ const startScheduleTimer = () => {
   window.api.send('start-lock-timer', Math.floor(scheduleDuration / 1000))
 }
 
+const cancelCountdown = () => {
+  stopCountdown()
+  window.api.send('cancel-lock-timer')
+}
+
 const clearCurrentMode = () => {
   if (mode.value === MODES.COUNTDOWN) {
-    stopCountdown()
+    cancelCountdown()
   } else {
     cancelSchedule()
   }
@@ -212,20 +220,25 @@ onUnmounted(() => {
   --transition-normal: 0.3s ease;
 }
 
-body {
+body, html {
   margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: var(--bg-gradient);
   color: var(--text-primary);
-  min-height: 100vh;
 }
 </style>
 
 <style scoped>
 .app-container {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
 }
@@ -235,7 +248,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--spacing-md);
+  padding: calc(var(--spacing-xl) * 2) var(--spacing-md) var(--spacing-md);
 }
 
 .card {
@@ -243,9 +256,33 @@ body {
   border-radius: var(--radius-lg);
   padding: var(--spacing-xl);
   width: 100%;
-  max-width: 480px;
+  max-width: 580px;
+  min-height: 300px;
   box-shadow: var(--shadow-lg);
   backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
+  transition: min-height var(--transition-normal);
+  margin-top: var(--spacing-xl);
+}
+
+.card--expanded {
+  min-height: 500px;
+}
+
+.card > * {
+  margin-bottom: var(--spacing-md);
+}
+
+.card > *:last-child {
+  margin-bottom: 0;
+}
+
+.result-container {
+  margin-top: auto;
+  min-height: 60px;
+  display: flex;
+  align-items: flex-end;
 }
 
 @media (max-width: 480px) {

@@ -21,15 +21,9 @@
     <transition name="fade">
       <div v-if="isScheduled" class="schedule-info">
         <span class="schedule-text">将在 {{ formattedTime }} 锁定屏幕</span>
-        <el-button 
-          @click="$emit('cancel')" 
-          class="cancel-button"
-          plain
-          type="danger"
-          size="small"
-        >
+        <button @click="$emit('cancel')" class="cancel-button">
           取消
-        </el-button>
+        </button>
       </div>
     </transition>
   </div>
@@ -67,7 +61,9 @@ watch(localTimeValue, (newValue) => {
 .schedule-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
+  gap: var(--spacing-lg);
+  min-height: 300px;
+  height: 100%;
 }
 
 .time-picker-container {
@@ -80,7 +76,7 @@ watch(localTimeValue, (newValue) => {
 
 .action-button {
   width: 100%;
-  padding: 1rem;
+  height: 56px;
   font-size: 1.125rem;
   background: var(--bg-gradient);
   color: white;
@@ -89,6 +85,12 @@ watch(localTimeValue, (newValue) => {
   cursor: pointer;
   transition: var(--transition-normal);
   box-shadow: var(--shadow-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.5;
+  font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
 .action-button:not(:disabled):hover {
@@ -105,7 +107,7 @@ watch(localTimeValue, (newValue) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg);
   background-color: rgba(102, 126, 234, 0.1);
   border-radius: var(--radius-sm);
   margin-top: var(--spacing-sm);
@@ -114,11 +116,37 @@ watch(localTimeValue, (newValue) => {
 .schedule-text {
   color: var(--text-primary);
   font-size: 1.125rem;
+  font-weight: 500;
 }
 
-:deep(.cancel-button) {
-  margin-left: var(--spacing-sm);
+.cancel-button {
+  margin-left: var(--spacing-md);
+  padding: 0.5rem 1.25rem;
   font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--error);
+  background-color: white;
+  border: 1px solid var(--error);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition-normal);
+  letter-spacing: 0.5px;
+  height: 36px;
+  min-width: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cancel-button:hover {
+  color: white;
+  background-color: var(--error);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.cancel-button:active {
+  transform: translateY(0);
 }
 
 .fade-enter-active, .fade-leave-active {
