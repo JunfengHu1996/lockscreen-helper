@@ -57,7 +57,7 @@ import ResultMessage from './components/ResultMessage.vue'
 // ============ 状态定义 ============
 const title = ref('倒计时锁屏')
 const mode = ref(MODES.COUNTDOWN)
-const lockTime = ref(120)
+const lockTime = ref(300) // 默认设置为5分钟
 const lockResult = ref(null)
 
 // 倒计时状态
