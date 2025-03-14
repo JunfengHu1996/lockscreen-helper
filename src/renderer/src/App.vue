@@ -262,8 +262,9 @@ body {
   backdrop-filter: blur(10px);
   display: flex;
   flex-direction: column;
-  transition: min-height var(--transition-normal);
+  transition: all var(--transition-normal);
   margin-top: var(--spacing-xl);
+  overflow-y: auto;
 }
 
 .card--expanded {
@@ -288,6 +289,11 @@ body {
 @media (max-width: 480px) {
   .card {
     padding: var(--spacing-lg);
+    margin: var(--spacing-md);
+  }
+  
+  .main-content {
+    padding: var(--spacing-xl) 0 0;
   }
 }
 </style>

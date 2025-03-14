@@ -12,10 +12,14 @@ function createWindow() {
   // 创建浏览器窗口
   const mainWindow = new BrowserWindow({
     width: 500,
-    height: Math.floor(height * 0.9), // 设置为屏幕高度的80%
+    height: Math.floor(height * 0.9), // 设置为屏幕高度的90%
     show: false,
     autoHideMenuBar: true,
-    resizable: false,
+    resizable: true, // 允许调整窗口大小
+    minWidth: 450, // 最小宽度
+    minHeight: 600, // 最小高度
+    maxWidth: 800, // 最大宽度
+    maxHeight: height, // 最大高度为屏幕高度的95%
     center: true,
     title: '定时锁屏',
     ...(process.platform === 'linux' ? { icon } : {}),
