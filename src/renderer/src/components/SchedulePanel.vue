@@ -89,16 +89,17 @@ watch(localTimeValue, (newValue) => {
 :deep(.el-input__inner) {
   font-size: 1.5rem !important;
   color: var(--text-primary) !important;
-  font-weight: 600 !important;
   height: 60px !important;
-  line-height: 60px !important; /* 确保文字垂直居中 */
+  font-weight: 600 !important;
+  user-select: none !important; /* 防止文本被选中 */
+  -webkit-user-select: none !important;
+}
 
-  &::placeholder {
-    color: var(--text-secondary) !important;
-    font-size: 1.125rem !important;
-    font-weight: 400 !important;
-    opacity: 0.7;
-  }
+:deep(.el-input__inner::placeholder) {
+  color: var(--text-secondary) !important;
+  font-size: 1.125rem !important;
+  font-weight: 400 !important;
+  opacity: 0.7;
 }
 
 :deep(.el-input__prefix) {
