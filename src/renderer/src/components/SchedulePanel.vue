@@ -67,8 +67,8 @@ watch(localTimeValue, (newValue) => {
 }
 
 .time-picker-container {
-  width: 100%;
-  margin-bottom: var(--spacing-md);
+  width: calc(100% - 1rem); /* 减去ModeTabs的左右padding总和 */
+  margin: 0 auto var(--spacing-md);
 }
 
 .time-picker {
