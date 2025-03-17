@@ -61,15 +61,15 @@ watch(localTimeValue, (newValue) => {
 .schedule-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
-  padding: var(--spacing-lg) 0;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) 0 var(--spacing-sm);
   height: auto;
   min-height: auto;
 }
 
 .time-picker-container {
   width: calc(100% - 1rem); /* 减去ModeTabs的左右padding总和 */
-  margin: 0 auto var(--spacing-md);
+  margin: 0 auto var(--spacing-sm);
 }
 
 .time-picker {
@@ -202,7 +202,7 @@ watch(localTimeValue, (newValue) => {
 
 .action-button {
   width: 100%;
-  height: 56px;
+  height: 50px;
   font-size: 1.125rem;
   font-weight: 600;
   background: var(--bg-gradient);
@@ -219,6 +219,7 @@ watch(localTimeValue, (newValue) => {
   align-items: center;
   justify-content: center;
   line-height: 1.5;
+  margin-top: var(--spacing-sm);
 }
 
 .action-button::after {

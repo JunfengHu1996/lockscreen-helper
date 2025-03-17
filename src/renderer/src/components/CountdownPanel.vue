@@ -139,8 +139,8 @@ watch(() => props.time, (newTime) => {
 .countdown-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
-  padding: var(--spacing-lg) 0;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) 0 var(--spacing-sm);
   height: auto;
   min-height: auto;
 }
@@ -150,7 +150,7 @@ watch(() => props.time, (newTime) => {
   border-radius: var(--radius-md);
   padding: var(--spacing-md);
   box-shadow: var(--shadow-sm);
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
 }
 
 .time-inputs {
@@ -233,7 +233,7 @@ watch(() => props.time, (newTime) => {
 }
 .action-button {
   width: 100%;
-  height: 56px;
+  height: 50px;
   font-size: 1.125rem;
   font-weight: 600;
   background: var(--bg-gradient);
@@ -250,6 +250,7 @@ watch(() => props.time, (newTime) => {
   align-items: center;
   justify-content: center;
   line-height: 1.5;
+  margin-top: var(--spacing-sm);
 }
 
 .action-button::after {
