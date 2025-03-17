@@ -13,10 +13,10 @@
     </div>
     <button 
       @click="$emit('start')" 
-      :disabled="isScheduled || !localTimeValue" 
+      :disabled="isScheduled || !localTimeValue || !isValidTime" 
       class="action-button"
     >
-      {{ isScheduled ? '定时中...' : '设定' }}
+      {{ isScheduled ? '定时中...' : !localTimeValue ? '请选择时间' : !isValidTime ? '请选择正确的时间' : '设定' }}
     </button>
     <transition name="fade">
       <div v-if="isScheduled" class="schedule-info">
@@ -44,6 +44,10 @@ const props = defineProps({
   },
   formattedTime: {
     type: String,
+    required: true
+  },
+  isValidTime: {
+    type: Boolean,
     required: true
   }
 })
