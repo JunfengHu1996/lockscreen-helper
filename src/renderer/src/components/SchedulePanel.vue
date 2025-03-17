@@ -62,8 +62,9 @@ watch(localTimeValue, (newValue) => {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
-  min-height: 300px;
-  height: 100%;
+  padding: var(--spacing-lg) 0;
+  height: auto;
+  min-height: auto;
 }
 
 .time-picker-container {
