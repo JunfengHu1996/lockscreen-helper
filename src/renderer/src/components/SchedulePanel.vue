@@ -153,6 +153,34 @@ watch(localTimeValue, (newValue) => {
 :deep(.el-time-spinner__item.active:not(.disabled)) {
   color: var(--primary);
   font-weight: 600;
+  background-color: transparent !important; /* 移除选中状态的蓝色背景 */
+}
+
+/* 去除选中文本的背景色 */
+:deep(.el-time-spinner__item.selected:not(.disabled)) {
+  background-color: transparent !important;
+}
+
+/* 鼠标悬停时的背景样式 */
+:deep(.el-time-spinner__item:hover:not(.disabled)) {
+  background-color: rgba(102, 126, 234, 0.1) !important;
+}
+
+/* 处理双击选中的背景色 */
+:deep(.el-time-spinner__item::selection) {
+  background-color: transparent !important;
+}
+
+:deep(.el-time-spinner__item::-moz-selection) {
+  background-color: transparent !important;
+}
+
+/* 禁用文本选择 */
+:deep(.el-time-spinner__list) {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
 }
 
 :deep(.el-time-panel__footer) {
