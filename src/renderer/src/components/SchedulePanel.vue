@@ -31,7 +31,7 @@
 
 <script setup>
 import { ref, watch } from 'vue'
-import { ElTimePicker, ElButton } from 'element-plus'
+import { ElTimePicker } from 'element-plus'
 
 const props = defineProps({
   timeValue: {
