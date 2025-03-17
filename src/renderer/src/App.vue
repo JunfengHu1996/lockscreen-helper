@@ -17,7 +17,7 @@
           :is-counting="isCountingDown"
           :countdown="countdown"
           @start="startCountdownTimer"
-          @cancel="cancelCountdown"
+          @cancel="cancelLockTimer"
           @update:time="lockTime = $event"
         />
 
@@ -28,7 +28,7 @@
           :is-scheduled="isScheduled"
           :formatted-time="formattedScheduleTime"
           @start="startScheduleTimer"
-          @cancel="cancelSchedule"
+          @cancel="cancelLockTimer"
           @update:time-value="scheduleTimeValue = $event"
         />
 
@@ -74,16 +74,15 @@ const {
 // 定时状态
 const {
   timeValue: scheduleTimeValue,
-  isScheduled,
-  scheduleTime,
-  startSchedule,
-  cancelSchedule,
+  isRunning: isScheduled,
+  startTimer: startSchedule,
+  stopTimer: cancelSchedule,
   formatTime: formatScheduleTime
 } = useTimer({ isScheduleMode: true })
 
 // 计算属性：格式化的定时时间
 const formattedScheduleTime = computed(() => {
-  return formatScheduleTime(scheduleTime.value)
+  return formatScheduleTime(scheduleTimeValue.value)
 })
 
 // ============ 常量和计算属性 ============
@@ -124,22 +123,23 @@ const startScheduleTimer = () => {
     scheduleDate.setDate(scheduleDate.getDate() + 1)
   }
   
-  scheduleTime.value = scheduleDate
-  startSchedule(scheduleDuration)
-  window.api.send('start-lock-timer', Math.floor(scheduleDuration / 1000))
+  // 使用毫秒转换为秒
+  const durationInSeconds = Math.floor(scheduleDuration / 1000)
+  startSchedule(durationInSeconds)
+  window.api.send('start-lock-timer', durationInSeconds)
 }
 
-const cancelCountdown = () => {
-  stopCountdown()
+const cancelLockTimer = () => {
+  if (mode.value === MODES.COUNTDOWN) {
+    stopCountdown()
+  } else {
+    cancelSchedule()
+  }
   window.api.send('cancel-lock-timer')
 }
 
 const clearCurrentMode = () => {
-  if (mode.value === MODES.COUNTDOWN) {
-    cancelCountdown()
-  } else {
-    cancelSchedule()
-  }
+  cancelLockTimer()
 }
 
 const handleLockResult = (result) => {

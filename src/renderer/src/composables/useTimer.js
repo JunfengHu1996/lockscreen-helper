@@ -4,8 +4,6 @@ export function useTimer(options = { isScheduleMode: false }) {
   const isRunning = ref(false)
   const countdown = ref(0)
   const timeValue = ref(null)
-  const isScheduled = ref(false)
-  const scheduleTime = ref('')
   
   let timer = null
   
@@ -30,26 +28,11 @@ export function useTimer(options = { isScheduleMode: false }) {
     }
     isRunning.value = false
     countdown.value = 0
-  }
-  
-  const startSchedule = (duration) => {
-    if (isScheduled.value) return
     
-    isScheduled.value = true
-    timer = setTimeout(() => {
-      isScheduled.value = false
-      scheduleTime.value = ''
-    }, duration)
-  }
-  
-  const cancelSchedule = () => {
-    if (timer) {
-      clearTimeout(timer)
-      timer = null
+    // 如果是定时模式，重置时间值为当前时间
+    if (options.isScheduleMode) {
+      timeValue.value = new Date()
     }
-    isScheduled.value = false
-    scheduleTime.value = ''
-    timeValue.value = new Date()
   }
   
   const formatTime = (date) => {
@@ -62,26 +45,15 @@ export function useTimer(options = { isScheduleMode: false }) {
   
   // 清理函数
   const cleanup = () => {
-    if (timer) {
-      if (options.isScheduleMode) {
-        clearTimeout(timer)
-      } else {
-        clearInterval(timer)
-      }
-      timer = null
-    }
+    stopTimer()
   }
   
   return {
     isRunning,
     countdown,
     timeValue,
-    isScheduled,
-    scheduleTime,
     startTimer,
     stopTimer,
-    startSchedule,
-    cancelSchedule,
     formatTime,
     cleanup
   }
