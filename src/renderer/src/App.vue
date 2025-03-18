@@ -159,6 +159,27 @@ const handleLockResult = (result) => {
     }, 3000)
 }
 
+// 新增：处理多次定时
+const handleMultiSchedules = (schedules) => {
+    window.api.send('set-multi-schedules', schedules)
+}
+
+// 在 onMounted 钩子中添加监听
+onMounted(() => {
+    // ... 其他代码
+
+    // 监听多次定时设置
+    window.api.on('set-multi-schedules', handleMultiSchedules)
+})
+
+// 在 onUnmounted 钩子中移除监听
+onUnmounted(() => {
+    // ... 其他代码
+
+    // 移除多次定时设置监听
+    window.api.off('set-multi-schedules', handleMultiSchedules)
+})
+
 // ============ 辅助函数 ============
 const isValidCountdownTime = (time) => {
     return time >= TIME_LIMITS.MIN && time <= TIME_LIMITS.MAX

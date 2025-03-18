@@ -66,7 +66,30 @@ app.whenReady().then(() => {
   // 存储定时器ID，以便可以取消
   let lockTimerIds = new Map();
 
-  // 监听 start-lock-timer 事件
+  // 执行锁屏
+  const lockScreen = (event) => {
+    if (process.platform === 'win32') {
+      exec('rundll32.exe user32.dll,LockWorkStation', (error, stdout, stderr) => {
+        if (error) {
+          console.error(`执行锁屏命令时出错: ${error.message}`);
+          event.reply('lock-screen-result', { success: false, error: error.message });
+          return;
+        }
+        if (stderr) {
+          console.error(`执行锁屏命令时出现错误输出: ${stderr}`);
+          event.reply('lock-screen-result', { success: false, error: stderr });
+          return;
+        }
+        console.log('屏幕已锁定');
+        event.reply('lock-screen-result', { success: true });
+      });
+    } else {
+      console.log('非 Windows 系统，无法执行锁屏命令');
+      event.reply('lock-screen-result', { success: false, error: '非 Windows 系统，无法执行锁屏命令' });
+    }
+  };
+
+  // 监听 start-lock-timer 事件（单次定时）
   ipcMain.on('start-lock-timer', (event, lockTime) => {
     console.log(`接收到锁屏请求，将在 ${lockTime} 秒后锁定屏幕`);
     
@@ -77,26 +100,7 @@ app.whenReady().then(() => {
     
     // 设置新的定时器
     const timerId = setTimeout(() => {
-      if (process.platform === 'win32') {
-        exec('rundll32.exe user32.dll,LockWorkStation', (error, stdout, stderr) => {
-          if (error) {
-            console.error(`执行锁屏命令时出错: ${error.message}`);
-            event.reply('lock-screen-result', { success: false, error: error.message });
-            return;
-          }
-          if (stderr) {
-            console.error(`执行锁屏命令时出现错误输出: ${stderr}`);
-            event.reply('lock-screen-result', { success: false, error: stderr });
-            return;
-          }
-          console.log('屏幕已锁定');
-          event.reply('lock-screen-result', { success: true });
-        });
-      } else {
-        console.log('非 Windows 系统，无法执行锁屏命令');
-        event.reply('lock-screen-result', { success: false, error: '非 Windows 系统，无法执行锁屏命令' });
-      }
-      
+      lockScreen(event);
       // 定时器执行后从Map中移除
       lockTimerIds.delete(event.sender.id);
     }, lockTime * 1000);
@@ -113,6 +117,26 @@ app.whenReady().then(() => {
       console.log('锁屏计时已取消');
       event.reply('lock-screen-result', { success: false, error: '用户已取消锁屏' });
     }
+  });
+
+  // 监听多次定时设置事件
+  ipcMain.on('set-multi-schedules', (event, schedules) => {
+    console.log('接收到多次定时设置:', schedules);
+
+    // 清除之前的所有定时器
+    if (lockTimerIds.has(event.sender.id)) {
+      lockTimerIds.get(event.sender.id).forEach(clearTimeout);
+    }
+
+    // 设置新的定时器
+    const newTimerIds = schedules.map(schedule => {
+      return setTimeout(() => {
+        lockScreen(event);
+      }, schedule.time);
+    });
+
+    // 存储新的定时器ID
+    lockTimerIds.set(event.sender.id, newTimerIds);
   });
 
   createWindow();
