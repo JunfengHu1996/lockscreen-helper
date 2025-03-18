@@ -128,7 +128,10 @@ const saveSchedules = () => {
 
     // 发送多次定时设置到主进程
     console.log('Sending schedules to main process:', schedulesToSend);
-    window.api.send('set-multi-schedules', schedulesToSend);
+    window.api.send('set-multi-schedules', {
+  schedules: schedulesToSend,
+  mode: MODES.SCHEDULE
+});
 
     // 更新schedules，只保留有效的未来时间
     schedules.value = validSchedules;
@@ -194,9 +197,9 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-    // 移除监听器
-    window.api.off('multi-schedule-result', handleLockScreenResult)
-    window.api.off('lock-execution-result', handleLockExecutionResult)
+    schedules.value = []
+    newTimeValue.value = null
+    clearTimeout(saveMessage.value?.timer)
 })
 </script>
 

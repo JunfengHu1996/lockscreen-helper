@@ -64,7 +64,11 @@ app.whenReady().then(() => {
   ipcMain.on('ping', () => console.log('pong'));
 
   // 存储定时器ID，以便可以取消
-  let lockTimerIds = new Map();
+  // 按模式存储定时器：{mode => {senderId => timers}}
+  let lockTimerIds = new Map([
+    ['single', new Map()],
+    ['multi', new Map()]
+  ]);
 
   // 执行锁屏
   const lockScreen = (event) => {
@@ -98,7 +102,7 @@ app.whenReady().then(() => {
       clearTimeout(lockTimerIds.get(event.sender.id));
     }
     
-    // 设置新的定时器
+    // 设置模式对应的新定时器
     const timerId = setTimeout(() => {
       lockScreen(event);
       // 定时器执行后从Map中移除
@@ -148,7 +152,16 @@ app.whenReady().then(() => {
         return;
       }
 
-      // 清除之前的所有定时器（如果存在）
+      // 根据模式清理旧定时器
+    const { mode } = schedules[0];
+    // 清理当前模式对应的旧定时器
+    if (lockTimerIds.has(mode)) {
+      const oldTimers = lockTimerIds.get(mode).get(event.sender.id);
+      if (Array.isArray(oldTimers)) {
+        oldTimers.forEach(timer => clearTimeout(timer.timeoutId));
+      }
+      lockTimerIds.get(mode).delete(event.sender.id);
+    }
       if (lockTimerIds.has(event.sender.id)) {
         const oldTimers = lockTimerIds.get(event.sender.id);
         if (Array.isArray(oldTimers)) {
@@ -162,7 +175,7 @@ app.whenReady().then(() => {
         }
       }
 
-      // 设置新的定时器
+      // 设置模式对应的新定时器
       const newTimers = validSchedules.map(schedule => {
         const delayInSeconds = Math.floor(schedule.time/1000);
         console.log(`设置定时器，将在 ${delayInSeconds} 秒后锁定屏幕`);
