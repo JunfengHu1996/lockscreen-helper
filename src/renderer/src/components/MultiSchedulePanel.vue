@@ -1,13 +1,13 @@
 <template>
     <div class="multi-schedule-panel">
         <div class="time-picker-container">
-            <div class="time-picker-wrapper">
-                <el-time-picker v-model="newTimeValue" format="HH:mm" placeholder="选择时间" :clearable="false" :size="'default'" class="time-picker" />
+            <el-time-picker v-model="newTimeValue" format="HH:mm" placeholder="选择时间" :clearable="false" :size="'default'" class="time-picker" />
+            <div class="schedule-controls">
                 <el-checkbox v-model="isDaily" class="daily-checkbox">每天执行</el-checkbox>
+                <button @click="addSchedule" class="add-button" :disabled="!isValidTime">
+                    添加
+                </button>
             </div>
-            <button @click="addSchedule" class="add-button" :disabled="!isValidTime">
-                添加
-            </button>
         </div>
         <div v-if="schedules.length > 0" class="schedules-list">
             <div v-for="schedule in schedules" :key="schedule.id" class="schedule-item">
@@ -224,28 +224,31 @@ onUnmounted(() => {
 
 .time-picker-container {
     display: flex;
+    flex-direction: column;
     gap: var(--spacing-sm);
     margin-bottom: var(--spacing-sm);
 }
 
-.time-picker-wrapper {
-    display: flex;
-    flex-grow: 1;
-    align-items: center;
-    gap: var(--spacing-sm);
+.time-picker {
+    width: 100%;
 }
 
-.time-picker {
-    flex-grow: 1;
+.schedule-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-sm);
+    padding: 0 2px;
 }
 
 .daily-checkbox {
-    margin-left: var(--spacing-sm);
-    white-space: nowrap;
+    font-size: 0.9rem;
+    color: var(--text-primary);
 }
 
 .add-button {
-    padding: 0 var(--spacing-md);
+    padding: 4px var(--spacing-md);
+    min-width: 80px;
     font-size: 0.875rem;
     font-weight: 600;
     color: var(--primary);
@@ -350,6 +353,25 @@ onUnmounted(() => {
     box-shadow: var(--shadow-sm) !important;
     transition: var(--transition-normal);
     border-radius: var(--radius-sm);
+    width: 100%;
+}
+
+:deep(.el-time-picker) {
+    width: 100%;
+}
+
+:deep(.el-checkbox__label) {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+:deep(.el-checkbox__input.is-checked .el-checkbox__inner) {
+    background-color: var(--primary);
+    border-color: var(--primary);
+}
+
+:deep(.el-checkbox__input.is-checked + .el-checkbox__label) {
+    color: var(--text-primary);
 }
 
 :deep(.el-input__inner) {
