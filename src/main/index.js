@@ -186,53 +186,27 @@ app.whenReady().then(() => {
 
       // 设置模式对应的新定时器
       const newTimers = validSchedules.map(schedule => {
-        const setTimer = (delay) => {
-          console.log(`设置定时器，将在 ${Math.floor(delay/1000)} 秒后锁定屏幕`);
+        const delayInSeconds = Math.floor(schedule.time/1000);
+        console.log(`设置定时器，将在 ${delayInSeconds} 秒后锁定屏幕`);
+        
+        const timeoutId = setTimeout(() => {
+          console.log(`执行定时锁屏，原计划时间：${delayInSeconds}秒`);
+          lockScreen(event);
           
-          const timeoutId = setTimeout(() => {
-            console.log(`执行定时锁屏，原计划时间：${Math.floor(delay/1000)}秒`);
-            lockScreen(event);
-            
-            if (schedule.isDaily) {
-              // 如果是每天执行，重新设置明天的定时器
-              const now = new Date();
-              // 确保scheduledTime是Date对象
-              const scheduledTime = new Date(schedule.scheduledTime);
-              console.log('每天执行的scheduledTime:', scheduledTime);
-              
-              // 获取小时和分钟
-              const hours = scheduledTime.getHours();
-              const minutes = scheduledTime.getMinutes();
-              console.log(`设置明天的定时器，时间：${hours}:${minutes}`);
-              
-              // 创建明天的定时
-              const nextDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, hours, minutes);
-              const nextDelay = nextDay.getTime() - now.getTime();
-              console.log(`明天的定时延迟毫秒数：${nextDelay}`);
-              
-              setTimer(nextDelay);
-            } else {
-              // 如果不是每天执行，从数组中移除该定时器
-              const timerArray = lockTimerIds.get(event.sender.id);
-              if (Array.isArray(timerArray)) {
-                const index = timerArray.findIndex(t => t.id === schedule.id);
-                if (index > -1) {
-                  timerArray.splice(index, 1);
-                }
-              }
+          // 定时器执行后，从数组中移除该定时器
+          const timerArray = lockTimerIds.get(event.sender.id);
+          if (Array.isArray(timerArray)) {
+            const index = timerArray.findIndex(t => t.id === schedule.id);
+            if (index > -1) {
+              timerArray.splice(index, 1);
             }
-          }, delay);
-
-          return timeoutId;
-        };
-
-        const timeoutId = setTimer(schedule.time);
+          }
+        }, schedule.time);
 
         return {
           id: schedule.id,
           timeoutId: timeoutId,
-          scheduledTime: new Date(Date.now() + schedule.time),
-          isDaily: schedule.isDaily
+          scheduledTime: new Date(Date.now() + schedule.time)
         };
       });
 

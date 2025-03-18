@@ -219,16 +219,48 @@ onUnmounted(() => {
 
 <style scoped>
 .multi-schedule-panel {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: var(--background-secondary);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
 }
 
 .time-picker-container {
-    display: flex;
-    flex-direction: column;
+    background: white;
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-xs);
+}
+
+.schedules-list {
     gap: var(--spacing-xs);
-    margin-bottom: var(--spacing-sm);
+    padding: 2px;
+}
+
+.schedule-item {
+    transition: var(--transition-fast);
+    border: 1px solid var(--border-subtle);
+}
+
+.schedule-item:hover {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-xs);
+}
+
+.buttons-container {
+    display: flex;
+    gap: var(--spacing-sm);
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--border-subtle);
+}
+
+.save-message {
+    animation: fadeInUp 0.4s ease-out;
+}
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .time-picker-row {
@@ -254,24 +286,48 @@ onUnmounted(() => {
 }
 
 .add-button {
-    padding: 4px var(--spacing-md);
-    min-width: 80px;
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--primary);
-    background-color: white;
-    border: 1px solid var(--primary);
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    transition: var(--transition-normal);
-}
-
-.add-button:hover:not(:disabled) {
+    background: var(--primary);
     color: white;
-    background-color: var(--primary);
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    transition: var(--transition-fast);
 }
 
-.add-button:disabled {
+.add-button:hover {
+    background: var(--primary-dark);
+    box-shadow: var(--shadow-xs);
+}
+
+.remove-button {
+    color: var(--danger);
+    border: 1px solid var(--danger-light);
+}
+
+.remove-button:hover {
+    background: var(--danger-light);
+}
+
+.action-button {
+    width: 100%;
+    margin-top: var(--spacing-md);
+    background: var(--success);
+}
+
+.el-time-picker {
+    --el-border-color: var(--border-subtle);
+}
+
+.save-message.success {
+    background: var(--success-light);
+    color: var(--success-dark);
+}
+
+.save-message.error {
+    background: var(--danger-light);
+    color: var(--danger-dark);
+}
+
+button:disabled {
     opacity: 0.6;
     cursor: not-allowed;
 }
