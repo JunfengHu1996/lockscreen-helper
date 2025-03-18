@@ -16,7 +16,7 @@ function createWindow() {
     show: false,
     autoHideMenuBar: true,
     resizable: true, // 允许调整窗口大小
-    minWidth: 450, // 最小宽度
+    minWidth: 600, // 最小宽度
     minHeight: 600, // 最小高度
     maxWidth: 800, // 最大宽度
     maxHeight: height, // 最大高度为屏幕高度的95%

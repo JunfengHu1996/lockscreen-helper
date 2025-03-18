@@ -288,6 +288,30 @@ onUnmounted(() => {
 
 .time-picker {
     flex-grow: 1;
+    height: 32px;  /* 统一高度 */
+}
+
+:deep(.el-input__wrapper) {
+    height: 32px !important;  /* 确保时间选择器高度一致 */
+    padding: 0 8px !important;
+}
+
+:deep(.el-input__inner) {
+    height: 32px !important;
+    line-height: 32px !important;
+    font-size: 0.875rem !important; /* 调整时间选择器字体大小 */
+}
+
+:deep(.el-input__icon) {
+    line-height: 32px !important; /* 调整图标垂直居中 */
+}
+
+.time-picker-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+    height: 32px; /* 确保整行高度一致 */
 }
 
 .daily-option {
@@ -303,41 +327,33 @@ onUnmounted(() => {
 }
 
 .add-button {
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    background: var(--primary);
     color: white;
-    padding: 6px 12px;
-    border-radius: var(--radius-md);
+    padding: 0 12px;
+    border-radius: var(--radius-sm);
     border: none;
-    font-size: 0.875rem;
+    font-size: 0.75rem; /* 稍微减小字体大小 */
     font-weight: 500;
     transition: var(--transition-fast);
     box-shadow: var(--shadow-xs);
-    opacity: 1;
     cursor: pointer;
-}
-
-.add-button:disabled {
-    opacity: 0.8;
-    cursor: not-allowed;
-    background: var(--primary-light);
-}
-
-.add-button:not(:disabled):hover {
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
+    height: 32px;
+    display: inline-flex; /* 改为 inline-flex */
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap; /* 防止文字换行 */
+    min-width: 60px; /* 设置最小宽度 */
 }
 
 .add-button:hover {
-    opacity: 0.9;
+    background: var(--primary-dark);
     transform: translateY(-1px);
     box-shadow: var(--shadow-sm);
 }
 
-.add-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    background: var(--background-tertiary);
-    box-shadow: none;
+.add-button:active {
+    transform: translateY(0);
+    box-shadow: var(--shadow-xs);
 }
 
 
