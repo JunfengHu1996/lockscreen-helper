@@ -3,9 +3,9 @@
         <div class="time-picker-container">
             <div class="time-picker-row">
                 <el-time-picker v-model="newTimeValue" format="HH:mm" placeholder="选择时间" :clearable="false" :size="'default'" class="time-picker" />
-                <button @click="addSchedule" class="add-button" :disabled="!isValidTime">
-                    添加
-                </button>
+                <button @click="addSchedule" class="add-button">
+    添加
+</button>
             </div>
             <div class="daily-option">
                 <el-checkbox v-model="isDaily" class="daily-checkbox">每天执行</el-checkbox>
@@ -43,7 +43,16 @@ const saveMessage = ref(null)
 const isDaily = ref(false)
 
 const isValidTime = computed(() => {
+    // 当没有选择时间时，返回false
+    if (!newTimeValue.value) return false;
+    
+    // 检查是否是有效的日期对象
     if (!(newTimeValue.value instanceof Date) || isNaN(newTimeValue.value)) return false;
+    
+    // 如果是每天执行，则时间总是有效的
+    if (isDaily.value) return true;
+    
+    // 否则检查是否是未来时间
     const now = new Date();
     const selectedTime = new Date(newTimeValue.value);
     selectedTime.setFullYear(now.getFullYear(), now.getMonth(), now.getDate());
@@ -51,6 +60,13 @@ const isValidTime = computed(() => {
 })
 
 const addSchedule = () => {
+    if (!newTimeValue.value) {
+        saveMessage.value = { type: 'error', text: '请先选择时间' }
+        setTimeout(() => {
+            saveMessage.value = null
+        }, 3000)
+        return
+    }
     if (isValidTime.value) {
         const now = new Date();
         const selectedTime = new Date(newTimeValue.value);
@@ -267,6 +283,7 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
 }
 
 .time-picker {
@@ -286,17 +303,43 @@ onUnmounted(() => {
 }
 
 .add-button {
-    background: var(--primary);
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
     color: white;
-    padding: 8px 16px;
-    border-radius: var(--radius-sm);
+    padding: 6px 12px;
+    border-radius: var(--radius-md);
+    border: none;
+    font-size: 0.875rem;
+    font-weight: 500;
     transition: var(--transition-fast);
+    box-shadow: var(--shadow-xs);
+    opacity: 1;
+    cursor: pointer;
+}
+
+.add-button:disabled {
+    opacity: 0.8;
+    cursor: not-allowed;
+    background: var(--primary-light);
+}
+
+.add-button:not(:disabled):hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
 }
 
 .add-button:hover {
-    background: var(--primary-dark);
-    box-shadow: var(--shadow-xs);
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
 }
+
+.add-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: var(--background-tertiary);
+    box-shadow: none;
+}
+
 
 .remove-button {
     color: var(--danger);
