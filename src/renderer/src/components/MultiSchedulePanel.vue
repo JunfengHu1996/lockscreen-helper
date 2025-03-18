@@ -1,14 +1,17 @@
 <template>
     <div class="multi-schedule-panel">
         <div class="time-picker-container">
-            <el-time-picker v-model="newTimeValue" format="HH:mm" placeholder="选择时间" :clearable="false" :size="'default'" class="time-picker" />
+            <div class="time-picker-wrapper">
+                <el-time-picker v-model="newTimeValue" format="HH:mm" placeholder="选择时间" :clearable="false" :size="'default'" class="time-picker" />
+                <el-checkbox v-model="isDaily" class="daily-checkbox">每天执行</el-checkbox>
+            </div>
             <button @click="addSchedule" class="add-button" :disabled="!isValidTime">
-            添加
-          </button>
+                添加
+            </button>
         </div>
         <div v-if="schedules.length > 0" class="schedules-list">
             <div v-for="schedule in schedules" :key="schedule.id" class="schedule-item">
-    <span class="schedule-time">{{ formatTime(schedule.time) }}</span>
+    <span class="schedule-time">{{ formatTime(schedule) }}</span>
     <button @click="removeSchedule(schedule.id)" class="remove-button">
       删除
     </button>
@@ -35,6 +38,7 @@ const newTimeValue = ref(null)
 const schedules = ref([])
 const isSaving = ref(false)
 const saveMessage = ref(null)
+const isDaily = ref(false)
 
 const isValidTime = computed(() => {
     if (!(newTimeValue.value instanceof Date) || isNaN(newTimeValue.value)) return false;
@@ -58,7 +62,8 @@ const addSchedule = () => {
         const id = Date.now()
         schedules.value.push({
             id,
-            time: selectedTime
+            time: selectedTime,
+            isDaily: isDaily.value // 添加是否每天执行的标记
         })
         newTimeValue.value = null
     }
@@ -76,18 +81,18 @@ const removeSchedule = (id) => {
     console.log('After removal, schedules:', JSON.stringify(schedules.value))
 }
 
-const formatTime = (date) => {
-    const now = new Date();
-    const isToday = date.getDate() === now.getDate() && 
-                   date.getMonth() === now.getMonth() && 
-                   date.getFullYear() === now.getFullYear();
-    
+const formatTime = (schedule) => {
+    const date = schedule.time;
     const timeStr = date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
     
-    if (isToday) {
-        return `今天 ${timeStr}`;
+    if (schedule.isDaily) {
+        return `每天 ${timeStr}`;
     } else {
-        return `明天 ${timeStr}`;
+        const now = new Date();
+        const isToday = date.getDate() === now.getDate() && 
+                       date.getMonth() === now.getMonth() && 
+                       date.getFullYear() === now.getFullYear();
+        return isToday ? `今天 ${timeStr}` : `明天 ${timeStr}`;
     }
 }
 
@@ -110,10 +115,11 @@ const saveSchedules = () => {
     // 计算每个时间点到现在的毫秒数，并确保都是正数
     const schedulesToSend = validSchedules.map(s => {
         const timeUntilLock = s.time.getTime() - now.getTime();
-        console.log(`时间设置：${formatTime(s.time)}, 剩余毫秒：${timeUntilLock}`);
+        console.log(`时间设置：${formatTime(s)}, 剩余毫秒：${timeUntilLock}`);
         return {
             time: timeUntilLock > 0 ? timeUntilLock : 0,
             id: s.id,
+            isDaily: s.isDaily, // 添加是否每天执行的标记
             scheduledTime: s.time // 保存原始的预定时间
         };
     }).filter(s => s.time > 0);
@@ -129,10 +135,15 @@ const saveSchedules = () => {
 
     // 发送多次定时设置到主进程
     console.log('Sending schedules to main process:', schedulesToSend);
+    // 确保scheduledTime是ISO字符串格式，方便在主进程中重新构造Date对象
+    const schedulesToSendProcessed = schedulesToSend.map(s => ({
+        ...s,
+        scheduledTime: s.scheduledTime.toISOString() // 转换为ISO字符串
+    }));
     window.api.send('set-multi-schedules', {
-  schedules: JSON.parse(JSON.stringify(schedulesToSend)),
-  mode: MODES.SCHEDULE
-});
+        schedules: schedulesToSendProcessed,
+        mode: MODES.SCHEDULE
+    });
 
     // 更新schedules，只保留有效的未来时间
     schedules.value = validSchedules;
@@ -217,8 +228,20 @@ onUnmounted(() => {
     margin-bottom: var(--spacing-sm);
 }
 
+.time-picker-wrapper {
+    display: flex;
+    flex-grow: 1;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
 .time-picker {
     flex-grow: 1;
+}
+
+.daily-checkbox {
+    margin-left: var(--spacing-sm);
+    white-space: nowrap;
 }
 
 .add-button {
