@@ -29,6 +29,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ElTimePicker } from 'element-plus'
+import { MODES } from '../constants'
 
 const newTimeValue = ref(null)
 const schedules = ref([])
@@ -129,7 +130,7 @@ const saveSchedules = () => {
     // 发送多次定时设置到主进程
     console.log('Sending schedules to main process:', schedulesToSend);
     window.api.send('set-multi-schedules', {
-  schedules: schedulesToSend,
+  schedules: JSON.parse(JSON.stringify(schedulesToSend)),
   mode: MODES.SCHEDULE
 });
 

@@ -133,7 +133,16 @@ app.whenReady().then(() => {
   });
 
   // 监听多次定时设置事件
-  ipcMain.on('set-multi-schedules', (event, schedules) => {
+  ipcMain.on('set-multi-schedules', (event, { schedules, mode }) => {
+    if (!Array.isArray(schedules)) {
+        console.error('无效的定时设置格式');
+        event.sender.send('multi-schedule-result', { 
+            success: false, 
+            error: '无效的定时设置格式',
+            fromMultiSchedule: true 
+        });
+        return;
+    }
     console.log('接收到多次定时设置:', schedules);
 
     try {
