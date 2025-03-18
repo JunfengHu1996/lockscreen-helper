@@ -1,12 +1,14 @@
 <template>
     <div class="multi-schedule-panel">
         <div class="time-picker-container">
-            <el-time-picker v-model="newTimeValue" format="HH:mm" placeholder="选择时间" :clearable="false" :size="'default'" class="time-picker" />
-            <div class="schedule-controls">
-                <el-checkbox v-model="isDaily" class="daily-checkbox">每天执行</el-checkbox>
+            <div class="time-picker-row">
+                <el-time-picker v-model="newTimeValue" format="HH:mm" placeholder="选择时间" :clearable="false" :size="'default'" class="time-picker" />
                 <button @click="addSchedule" class="add-button" :disabled="!isValidTime">
                     添加
                 </button>
+            </div>
+            <div class="daily-option">
+                <el-checkbox v-model="isDaily" class="daily-checkbox">每天执行</el-checkbox>
             </div>
         </div>
         <div v-if="schedules.length > 0" class="schedules-list">
@@ -225,20 +227,25 @@ onUnmounted(() => {
 .time-picker-container {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-sm);
+    gap: var(--spacing-xs);
     margin-bottom: var(--spacing-sm);
 }
 
-.time-picker {
-    width: 100%;
-}
-
-.schedule-controls {
+.time-picker-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: var(--spacing-sm);
-    padding: 0 2px;
+}
+
+.time-picker {
+    flex-grow: 1;
+}
+
+.daily-option {
+    display: flex;
+    align-items: center;
+    padding-left: 2px;
+    margin-top: -2px;
 }
 
 .daily-checkbox {
@@ -353,7 +360,6 @@ onUnmounted(() => {
     box-shadow: var(--shadow-sm) !important;
     transition: var(--transition-normal);
     border-radius: var(--radius-sm);
-    width: 100%;
 }
 
 :deep(.el-time-picker) {
