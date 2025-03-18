@@ -8,11 +8,11 @@
         </div>
         <div v-if="schedules.length > 0" class="schedules-list">
             <div v-for="schedule in schedules" :key="schedule.id" class="schedule-item">
-                <span class="schedule-time">{{ formatTime(schedule.time) }}</span>
-                <button @click="removeSchedule(schedule.id)" class="remove-button">
-              <i class="el-icon-delete"></i>
-            </button>
-            </div>
+    <span class="schedule-time">{{ formatTime(schedule.time) }}</span>
+    <button @click="removeSchedule(schedule.id)" class="remove-button">
+      删除
+    </button>
+</div>
         </div>
         <div v-else class="no-schedules">
             暂无定时设置
@@ -27,7 +27,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ElTimePicker } from 'element-plus'
 
 const newTimeValue = ref(null)
@@ -45,55 +45,158 @@ const isValidTime = computed(() => {
 
 const addSchedule = () => {
     if (isValidTime.value) {
+        const now = new Date();
+        const selectedTime = new Date(newTimeValue.value);
+        selectedTime.setFullYear(now.getFullYear(), now.getMonth(), now.getDate());
+        
+        if (selectedTime <= now) {
+            // 如果选择的时间小于或等于当前时间，将其设置为明天的同一时间
+            selectedTime.setDate(selectedTime.getDate() + 1);
+        }
+        
         const id = Date.now()
         schedules.value.push({
             id,
-            time: newTimeValue.value
+            time: selectedTime
         })
         newTimeValue.value = null
     }
 }
 
+const isFutureTime = (date) => {
+    const now = new Date();
+    return date > now;
+}
+
 const removeSchedule = (id) => {
+    console.log('Removing schedule with id:', id)
+    console.log('Before removal, schedules:', JSON.stringify(schedules.value))
     schedules.value = schedules.value.filter(schedule => schedule.id !== id)
+    console.log('After removal, schedules:', JSON.stringify(schedules.value))
 }
 
 const formatTime = (date) => {
-    return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })
+    const now = new Date();
+    const isToday = date.getDate() === now.getDate() && 
+                   date.getMonth() === now.getMonth() && 
+                   date.getFullYear() === now.getFullYear();
+    
+    const timeStr = date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+    
+    if (isToday) {
+        return `今天 ${timeStr}`;
+    } else {
+        return `明天 ${timeStr}`;
+    }
 }
 
 const saveSchedules = () => {
     isSaving.value = true
     saveMessage.value = null
-    // 发送多次定时设置到主进程
-    window.api.send('set-multi-schedules', schedules.value.map(s => ({
-        time: s.time.getTime() - Date.now(),
-        id: s.id
-    })))
-    console.log('Schedules saved:', schedules.value)
 
-    // 模拟异步操作
-    setTimeout(() => {
+    const now = new Date();
+    const validSchedules = schedules.value.filter(s => isFutureTime(s.time));
+
+    if (validSchedules.length === 0) {
         isSaving.value = false
-        saveMessage.value = { type: 'success', text: '设置已保存' }
+        saveMessage.value = { type: 'error', text: '没有有效的未来时间设置' }
+        setTimeout(() => {
+            saveMessage.value = null
+        }, 3000)
+        return
+    }
+
+    // 计算每个时间点到现在的毫秒数，并确保都是正数
+    const schedulesToSend = validSchedules.map(s => {
+        const timeUntilLock = s.time.getTime() - now.getTime();
+        console.log(`时间设置：${formatTime(s.time)}, 剩余毫秒：${timeUntilLock}`);
+        return {
+            time: timeUntilLock > 0 ? timeUntilLock : 0,
+            id: s.id,
+            scheduledTime: s.time // 保存原始的预定时间
+        };
+    }).filter(s => s.time > 0);
+
+    if (schedulesToSend.length === 0) {
+        isSaving.value = false
+        saveMessage.value = { type: 'error', text: '没有有效的未来时间设置' }
+        setTimeout(() => {
+            saveMessage.value = null
+        }, 3000)
+        return
+    }
+
+    // 发送多次定时设置到主进程
+    console.log('Sending schedules to main process:', schedulesToSend);
+    window.api.send('set-multi-schedules', schedulesToSend);
+
+    // 更新schedules，只保留有效的未来时间
+    schedules.value = validSchedules;
+}
+
+// 监听来自主进程的锁屏结果
+const handleLockScreenResult = (result) => {
+    console.log('MultiSchedulePanel received lock-screen-result:', result);
+    isSaving.value = false;
+    
+    // 只处理多次定时设置相关的消息
+    if (result.fromMultiSchedule) {
+        if (result.success) {
+            saveMessage.value = { 
+                type: 'success', 
+                text: result.message || '定时设置已保存' 
+            }
+        } else {
+            saveMessage.value = { 
+                type: 'error', 
+                text: result.error || '设置失败' 
+            }
+        }
+
         // 3秒后清除消息
         setTimeout(() => {
             saveMessage.value = null
         }, 3000)
-    }, 1000)
+    }
 }
 
-// 监听来自主进程的锁屏结果
-window.api.on('lock-screen-result', (result) => {
-    if (result.success) {
-        saveMessage.value = { type: 'success', text: '锁屏成功' }
-    } else {
-        saveMessage.value = { type: 'error', text: `锁屏失败: ${result.error}` }
+// 创建一个特定的取消监听器，用于处理锁屏执行结果
+const handleLockExecutionResult = (result) => {
+    console.log('MultiSchedulePanel received lock execution result:', result);
+    
+    // 只处理锁屏执行结果，不处理取消消息
+    if (!result.error?.includes('用户已取消锁屏')) {
+        if (result.success) {
+            saveMessage.value = { 
+                type: 'success', 
+                text: '锁屏成功' 
+            }
+        } else {
+            saveMessage.value = { 
+                type: 'error', 
+                text: `锁屏失败: ${result.error || '未知错误'}` 
+            }
+        }
+
+        // 3秒后清除消息
+        setTimeout(() => {
+            saveMessage.value = null
+        }, 3000)
     }
-    // 3秒后清除消息
-    setTimeout(() => {
-        saveMessage.value = null
-    }, 3000)
+}
+
+onMounted(() => {
+    // 监听多次定时设置的结果
+    window.api.on('multi-schedule-result', handleLockScreenResult)
+    
+    // 监听锁屏执行结果
+    window.api.on('lock-execution-result', handleLockExecutionResult)
+})
+
+onUnmounted(() => {
+    // 移除监听器
+    window.api.off('multi-schedule-result', handleLockScreenResult)
+    window.api.off('lock-execution-result', handleLockExecutionResult)
 })
 </script>
 
@@ -164,17 +267,19 @@ window.api.on('lock-screen-result', (result) => {
 }
 
 .remove-button {
-    padding: 0.25rem;
-    font-size: 0.875rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
     color: var(--error);
     background-color: transparent;
-    border: none;
+    border: 1px solid var(--error);
+    border-radius: var(--radius-sm);
     cursor: pointer;
     transition: var(--transition-normal);
 }
 
 .remove-button:hover {
-    color: var(--error-dark);
+    color: white;
+    background-color: var(--error);
 }
 
 .no-schedules {

@@ -145,18 +145,21 @@ const clearCurrentMode = () => {
 }
 
 const handleLockResult = (result) => {
-    lockResult.value = result
-    if (!result.success) {
-        // 如果是错误消息，不清除当前模式
-        scheduleTimeValue.value = new Date() // 重置为当前时间
-    } else {
-        clearCurrentMode()
-    }
+    // 仅在倒计时和单次定时模式下处理锁屏结果
+    if (mode.value !== 'multi-schedule') {
+        lockResult.value = result
+        if (!result.success && !result.error?.includes('用户已取消锁屏')) {
+            // 如果是错误消息且不是取消消息，不清除当前模式
+            scheduleTimeValue.value = new Date() // 重置为当前时间
+        } else {
+            clearCurrentMode()
+        }
 
-    // 3秒后清除结果提示
-    setTimeout(() => {
-        lockResult.value = null
-    }, 3000)
+        // 3秒后清除结果提示
+        setTimeout(() => {
+            lockResult.value = null
+        }, 3000)
+    }
 }
 
 // 新增：处理多次定时

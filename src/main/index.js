@@ -72,20 +72,20 @@ app.whenReady().then(() => {
       exec('rundll32.exe user32.dll,LockWorkStation', (error, stdout, stderr) => {
         if (error) {
           console.error(`执行锁屏命令时出错: ${error.message}`);
-          event.reply('lock-screen-result', { success: false, error: error.message });
+          event.reply('lock-execution-result', { success: false, error: error.message });
           return;
         }
         if (stderr) {
           console.error(`执行锁屏命令时出现错误输出: ${stderr}`);
-          event.reply('lock-screen-result', { success: false, error: stderr });
+          event.reply('lock-execution-result', { success: false, error: stderr });
           return;
         }
         console.log('屏幕已锁定');
-        event.reply('lock-screen-result', { success: true });
+        event.reply('lock-execution-result', { success: true });
       });
     } else {
       console.log('非 Windows 系统，无法执行锁屏命令');
-      event.reply('lock-screen-result', { success: false, error: '非 Windows 系统，无法执行锁屏命令' });
+      event.reply('lock-execution-result', { success: false, error: '非 Windows 系统，无法执行锁屏命令' });
     }
   };
 
@@ -112,10 +112,19 @@ app.whenReady().then(() => {
   // 监听取消锁屏计时事件
   ipcMain.on('cancel-lock-timer', (event) => {
     if (lockTimerIds.has(event.sender.id)) {
-      clearTimeout(lockTimerIds.get(event.sender.id));
+      const timers = lockTimerIds.get(event.sender.id);
+      if (Array.isArray(timers)) {
+        timers.forEach(timer => {
+          if (timer && timer.timeoutId) {
+            clearTimeout(timer.timeoutId);
+          }
+        });
+      } else if (timers) {
+        clearTimeout(timers);
+      }
       lockTimerIds.delete(event.sender.id);
       console.log('锁屏计时已取消');
-      event.reply('lock-screen-result', { success: false, error: '用户已取消锁屏' });
+      // 不发送取消消息，因为这可能是由设置新的定时引起的
     }
   });
 
@@ -123,20 +132,97 @@ app.whenReady().then(() => {
   ipcMain.on('set-multi-schedules', (event, schedules) => {
     console.log('接收到多次定时设置:', schedules);
 
-    // 清除之前的所有定时器
-    if (lockTimerIds.has(event.sender.id)) {
-      lockTimerIds.get(event.sender.id).forEach(clearTimeout);
+    try {
+      // 验证并过滤定时设置
+      const validSchedules = schedules.filter(schedule => {
+        return schedule.time > 0 && Number.isFinite(schedule.time);
+      });
+
+      if (validSchedules.length === 0) {
+        console.log('没有有效的定时设置');
+        event.reply('multi-schedule-result', { 
+          success: false, 
+          error: '没有有效的定时设置',
+          fromMultiSchedule: true
+        });
+        return;
+      }
+
+      // 清除之前的所有定时器（如果存在）
+      if (lockTimerIds.has(event.sender.id)) {
+        const oldTimers = lockTimerIds.get(event.sender.id);
+        if (Array.isArray(oldTimers)) {
+          oldTimers.forEach(timer => {
+            if (timer && timer.timeoutId) {
+              clearTimeout(timer.timeoutId);
+            }
+          });
+        } else if (oldTimers) {
+          clearTimeout(oldTimers);
+        }
+      }
+
+      // 设置新的定时器
+      const newTimers = validSchedules.map(schedule => {
+        const delayInSeconds = Math.floor(schedule.time/1000);
+        console.log(`设置定时器，将在 ${delayInSeconds} 秒后锁定屏幕`);
+        
+        const timeoutId = setTimeout(() => {
+          console.log(`执行定时锁屏，原计划时间：${delayInSeconds}秒`);
+          lockScreen(event);
+          
+          // 定时器执行后，从数组中移除该定时器
+          const timerArray = lockTimerIds.get(event.sender.id);
+          if (Array.isArray(timerArray)) {
+            const index = timerArray.findIndex(t => t.id === schedule.id);
+            if (index > -1) {
+              timerArray.splice(index, 1);
+            }
+          }
+        }, schedule.time);
+
+        return {
+          id: schedule.id,
+          timeoutId: timeoutId,
+          scheduledTime: new Date(Date.now() + schedule.time)
+        };
+      });
+
+      // 存储新的定时器信息
+      lockTimerIds.set(event.sender.id, newTimers);
+
+      // 发送成功响应
+      const message = validSchedules.length === 1 
+        ? '已设置1个定时锁屏任务' 
+        : `已设置 ${validSchedules.length} 个定时锁屏任务`;
+      
+      console.log(message);
+      event.reply('multi-schedule-result', { 
+        success: true, 
+        message: message,
+        fromMultiSchedule: true
+      });
+
+    } catch (error) {
+      console.error('设置定时器时出错:', error);
+      event.reply('multi-schedule-result', { 
+        success: false, 
+        error: '设置定时器失败：' + error.message,
+        fromMultiSchedule: true
+      });
     }
+  });
 
-    // 设置新的定时器
-    const newTimerIds = schedules.map(schedule => {
-      return setTimeout(() => {
-        lockScreen(event);
-      }, schedule.time);
-    });
-
-    // 存储新的定时器ID
-    lockTimerIds.set(event.sender.id, newTimerIds);
+  // 在应用退出前清理所有定时器
+  app.on('before-quit', () => {
+    for (const [_, timers] of lockTimerIds) {
+      if (Array.isArray(timers)) {
+        timers.forEach(clearTimeout);
+      } else if (timers) {
+        clearTimeout(timers);
+      }
+    }
+    lockTimerIds.clear();
   });
 
   createWindow();
