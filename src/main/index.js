@@ -3,6 +3,15 @@ import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
 import { exec } from 'child_process';
+import Store from 'electron-store';
+
+// 初始化存储
+const store = new Store({
+  name: 'schedules', // 存储文件名
+  defaults: {
+    multiSchedules: [] // 默认值为空数组
+  }
+});
 
 function createWindow() {
   // 获取主屏幕尺寸
@@ -132,6 +141,59 @@ app.whenReady().then(() => {
     }
   });
 
+  // 加载已保存的定时设置
+  ipcMain.on('load-saved-schedules', (event) => {
+    try {
+      const savedSchedules = store.get('multiSchedules', []);
+      // 过滤出仍然有效的定时设置
+      const now = Date.now();
+      const validSchedules = savedSchedules
+        .map(schedule => {
+          if (schedule.isDaily) {
+            // 对于每日重复的任务，调整时间到今天或明天
+            const scheduledTime = new Date(schedule.scheduledTime);
+            const todayTime = new Date();
+            todayTime.setHours(scheduledTime.getHours());
+            todayTime.setMinutes(scheduledTime.getMinutes());
+            todayTime.setSeconds(0);
+            todayTime.setMilliseconds(0);
+            
+            if (todayTime.getTime() <= now) {
+              // 如果今天的时间已过，设置为明天
+              todayTime.setDate(todayTime.getDate() + 1);
+            }
+            return {
+              ...schedule,
+              scheduledTime: todayTime.toISOString(),
+              time: todayTime.getTime() - now
+            };
+          } else {
+            // 对于非重复任务，检查是否仍然有效
+            const scheduledTime = new Date(schedule.scheduledTime);
+            if (scheduledTime.getTime() > now) {
+              return {
+                ...schedule,
+                time: scheduledTime.getTime() - now
+              };
+            }
+            return null;
+          }
+        })
+        .filter(schedule => schedule !== null);
+
+      event.reply('saved-schedules-loaded', { 
+        success: true, 
+        schedules: validSchedules
+      });
+    } catch (error) {
+      console.error('加载已保存的定时设置时出错:', error);
+      event.reply('saved-schedules-loaded', { 
+        success: false, 
+        error: error.message 
+      });
+    }
+  });
+
   // 监听多次定时设置事件
   ipcMain.on('set-multi-schedules', (event, { schedules, mode }) => {
     if (!Array.isArray(schedules)) {
@@ -212,6 +274,13 @@ app.whenReady().then(() => {
 
       // 存储新的定时器信息
       lockTimerIds.set(event.sender.id, newTimers);
+
+      // 保存到持久化存储
+      store.set('multiSchedules', validSchedules.map(schedule => ({
+        id: schedule.id,
+        scheduledTime: schedule.scheduledTime,
+        isDaily: schedule.isDaily
+      })));
 
       // 发送成功响应
       const message = validSchedules.length === 1 

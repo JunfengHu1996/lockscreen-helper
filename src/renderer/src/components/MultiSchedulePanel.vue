@@ -224,12 +224,32 @@ onMounted(() => {
     
     // 监听锁屏执行结果
     window.api.on('lock-execution-result', handleLockExecutionResult)
+
+    // 监听已保存定时设置的加载结果
+    window.api.on('saved-schedules-loaded', (result) => {
+        if (result.success && result.schedules.length > 0) {
+            // 将加载的定时设置转换为正确的格式
+            schedules.value = result.schedules.map(schedule => ({
+                id: schedule.id,
+                time: new Date(schedule.scheduledTime),
+                isDaily: schedule.isDaily
+            }));
+            console.log('已加载保存的定时设置:', schedules.value);
+        } else if (!result.success) {
+            console.error('加载保存的定时设置失败:', result.error);
+        }
+    });
+
+    // 加载保存的定时设置
+    window.api.send('load-saved-schedules');
 })
 
 onUnmounted(() => {
     schedules.value = []
     newTimeValue.value = null
     clearTimeout(saveMessage.value?.timer)
+    // 移除事件监听器
+    window.api.off('saved-schedules-loaded')
 })
 </script>
 
