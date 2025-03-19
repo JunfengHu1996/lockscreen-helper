@@ -26,6 +26,7 @@ function createWindow() {
     maxHeight: height, // 最大高度为屏幕高度的95%
     center: true,
     title: '定时锁屏',
+    icon: icon,
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
