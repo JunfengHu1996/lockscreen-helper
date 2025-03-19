@@ -43,10 +43,14 @@ const isDaily = ref(false)
 const loadSavedSchedules = () => {
   window.api.getSavedSchedules().then((savedSchedules) => {
     if (savedSchedules && Array.isArray(savedSchedules)) {
-      schedules.value = savedSchedules.map(schedule => ({
-        ...schedule,
-        time: new Date(schedule.scheduledTime)
-      }));
+      // 过滤过期单次任务
+const now = new Date();
+schedules.value = savedSchedules
+  .map(schedule => ({
+    ...schedule,
+    time: new Date(schedule.scheduledTime)
+  }))
+  .filter(s => s.isDaily || s.time > now);
       // 传入true表示这是初始加载
       handleSchedulesChange(schedules.value, true);
     }
