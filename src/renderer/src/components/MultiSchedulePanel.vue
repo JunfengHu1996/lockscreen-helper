@@ -232,12 +232,37 @@ const handleLockExecutionResult = (result) => {
     }
 }
 
+// 处理定时任务执行完成的事件
+const handleScheduleExecuted = (result) => {
+    console.log('Schedule executed:', result);
+    if (result.updatedSchedules) {
+        schedules.value = result.updatedSchedules.map(schedule => ({
+            ...schedule,
+            time: new Date(schedule.scheduledTime)
+        }));
+        
+        // 如果是每日任务执行完成，显示提示消息
+        if (result.isDaily) {
+            saveMessage.value = { 
+                type: 'success', 
+                text: '每日任务已执行，将在明天继续' 
+            };
+            setTimeout(() => {
+                saveMessage.value = null;
+            }, 3000);
+        }
+    }
+};
+
 onMounted(() => {
     // 监听多次定时设置的结果
     window.api.on('multi-schedule-result', handleLockScreenResult)
     
     // 监听锁屏执行结果
     window.api.on('lock-execution-result', handleLockExecutionResult)
+
+    // 监听定时任务执行完成事件
+    window.api.on('schedule-executed', handleScheduleExecuted)
 
     // 初始化长度记录器
     window.lastSchedulesLength = 0;
@@ -249,6 +274,11 @@ onMounted(() => {
 onUnmounted(() => {
     newTimeValue.value = null
     clearTimeout(saveMessage.value?.timer)
+    
+    // 移除事件监听器
+    window.api.off('multi-schedule-result', handleLockScreenResult)
+    window.api.off('lock-execution-result', handleLockExecutionResult)
+    window.api.off('schedule-executed', handleScheduleExecuted)
 })
 </script>
 

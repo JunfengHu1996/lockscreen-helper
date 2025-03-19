@@ -11,6 +11,9 @@ const api = {
       ipcRenderer.removeListener(channel, subscription);
     };
   },
+  off: (channel, callback) => {
+    ipcRenderer.removeListener(channel, callback);
+  },
   // 添加一个新方法来获取保存的定时设置
   getSavedSchedules: () => ipcRenderer.invoke('get-saved-schedules')
 };

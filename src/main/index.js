@@ -197,6 +197,44 @@ app.whenReady().then(() => {
             const index = timerArray.findIndex(t => t.id === schedule.id);
             if (index > -1) {
               timerArray.splice(index, 1);
+              
+              // 更新存储的任务列表
+              const savedSchedules = store.get('multiSchedules', []);
+              // 只删除非每日执行的任务
+              const targetSchedule = savedSchedules.find(s => s.id === schedule.id);
+              if (targetSchedule && !targetSchedule.isDaily) {
+                const updatedSchedules = savedSchedules.filter(s => s.id !== schedule.id);
+                store.set('multiSchedules', updatedSchedules);
+                
+                // 通知渲染进程更新 UI
+                event.reply('schedule-executed', { 
+                  scheduleId: schedule.id,
+                  updatedSchedules: updatedSchedules
+                });
+              } else if (targetSchedule && targetSchedule.isDaily) {
+                // 对于每日任务，更新下次执行时间
+                const scheduledTime = new Date(targetSchedule.scheduledTime);
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                tomorrow.setHours(scheduledTime.getHours());
+                tomorrow.setMinutes(scheduledTime.getMinutes());
+                tomorrow.setSeconds(0);
+                tomorrow.setMilliseconds(0);
+                
+                const updatedSchedules = savedSchedules.map(s => 
+                  s.id === schedule.id 
+                    ? { ...s, scheduledTime: tomorrow.toISOString() }
+                    : s
+                );
+                store.set('multiSchedules', updatedSchedules);
+                
+                // 通知渲染进程更新 UI，但不删除任务
+                event.reply('schedule-executed', { 
+                  scheduleId: schedule.id,
+                  updatedSchedules: updatedSchedules,
+                  isDaily: true
+                });
+              }
             }
           }
         }, schedule.time);
