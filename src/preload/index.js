@@ -10,7 +10,9 @@ const api = {
     return () => {
       ipcRenderer.removeListener(channel, subscription);
     };
-  }
+  },
+  // 添加一个新方法来获取保存的定时设置
+  getSavedSchedules: () => ipcRenderer.invoke('get-saved-schedules')
 };
 
 // 使用 `contextBridge` API 将 Electron API 暴露给渲染器

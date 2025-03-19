@@ -22,9 +22,6 @@
         <div v-else class="no-schedules">
             暂无定时设置
         </div>
-        <button @click="saveSchedules" :disabled="schedules.length === 0 || isSaving" class="action-button">
-          {{ isSaving ? '保存中...' : '保存设置' }}
-        </button>
         <div v-if="saveMessage" :class="['save-message', saveMessage.type]">
             {{ saveMessage.text }}
         </div>
@@ -32,7 +29,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { ElTimePicker } from 'element-plus'
 import { MODES } from '../constants'
 
@@ -41,6 +38,53 @@ const schedules = ref([])
 const isSaving = ref(false)
 const saveMessage = ref(null)
 const isDaily = ref(false)
+
+// 加载保存的定时设置
+const loadSavedSchedules = () => {
+  window.api.getSavedSchedules().then((savedSchedules) => {
+    if (savedSchedules && Array.isArray(savedSchedules)) {
+      schedules.value = savedSchedules.map(schedule => ({
+        ...schedule,
+        time: new Date(schedule.scheduledTime)
+      }));
+      // 传入true表示这是初始加载
+      handleSchedulesChange(schedules.value, true);
+    }
+  });
+};
+
+// 处理schedules变化
+const handleSchedulesChange = (schedules, isInitialLoad = false) => {
+  const now = new Date();
+  // 过滤出有效的定时任务：每天执行的任务或未来时间的任务
+  const validSchedules = schedules.filter(s => {
+    if (s.isDaily) return true;
+    return s.time > now;
+  });
+
+  const schedulesToSend = validSchedules.map(s => ({
+    ...s,
+    time: s.time.getTime() - now.getTime(),
+    scheduledTime: s.time.toISOString()
+  }));
+
+  // 添加一个标记，表示这是删除操作
+  const isDelete = window.lastSchedulesLength > schedules.length;
+  window.lastSchedulesLength = schedules.length;
+
+  // 如果有有效的定时任务，或者这是一个删除操作，才发送更新
+  if (validSchedules.length > 0 || isDelete) {
+    window.api.send('set-multi-schedules', {
+      schedules: schedulesToSend,
+      mode: MODES.SCHEDULE,
+      isDelete, // 传递删除标记
+      isSilent: isInitialLoad // 初始加载时静默设置
+    });
+  }
+};
+
+// 监听schedules的变化，自动保存
+watch(schedules, (newSchedules) => handleSchedulesChange(newSchedules, false), { deep: true });
 
 const isValidTime = computed(() => {
     // 当没有选择时间时，返回false
@@ -61,30 +105,48 @@ const isValidTime = computed(() => {
 
 const addSchedule = () => {
     if (!newTimeValue.value) {
-        saveMessage.value = { type: 'error', text: '请先选择时间' }
-        setTimeout(() => {
-            saveMessage.value = null
-        }, 3000)
         return
     }
-    if (isValidTime.value) {
+
+    // 检查是否选择了过去的时间（仅对非每日任务进行检查）
+    if (!isDaily.value) {
         const now = new Date();
         const selectedTime = new Date(newTimeValue.value);
         selectedTime.setFullYear(now.getFullYear(), now.getMonth(), now.getDate());
         
         if (selectedTime <= now) {
-            // 如果选择的时间小于或等于当前时间，将其设置为明天的同一时间
-            selectedTime.setDate(selectedTime.getDate() + 1);
+            saveMessage.value = { type: 'error', text: '请选择未来的时间' }
+            setTimeout(() => {
+                saveMessage.value = null
+            }, 3000)
+            return
         }
-        
-        const id = Date.now()
-        schedules.value.push({
-            id,
-            time: selectedTime,
-            isDaily: isDaily.value // 添加是否每天执行的标记
-        })
-        newTimeValue.value = null
     }
+
+    const now = new Date();
+    const selectedTime = new Date(newTimeValue.value);
+    selectedTime.setFullYear(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    if (!isDaily.value && selectedTime <= now) {
+        // 如果不是每日执行且选择的时间小于或等于当前时间，将其设置为明天的同一时间
+        selectedTime.setDate(selectedTime.getDate() + 1);
+    }
+    
+    const id = Date.now()
+    const newSchedule = {
+        id,
+        time: selectedTime,
+        isDaily: isDaily.value
+    };
+    
+    schedules.value.push(newSchedule)
+    newTimeValue.value = null
+
+    // 显示添加成功消息
+    saveMessage.value = { type: 'success', text: '添加成功' }
+    setTimeout(() => {
+        saveMessage.value = null
+    }, 3000)
 }
 
 const isFutureTime = (date) => {
@@ -112,59 +174,6 @@ const formatTime = (schedule) => {
                        date.getFullYear() === now.getFullYear();
         return isToday ? `今天 ${timeStr}` : `明天 ${timeStr}`;
     }
-}
-
-const saveSchedules = () => {
-    isSaving.value = true
-    saveMessage.value = null
-
-    const now = new Date();
-    const validSchedules = schedules.value.filter(s => isFutureTime(s.time));
-
-    if (validSchedules.length === 0) {
-        isSaving.value = false
-        saveMessage.value = { type: 'error', text: '没有有效的未来时间设置' }
-        setTimeout(() => {
-            saveMessage.value = null
-        }, 3000)
-        return
-    }
-
-    // 计算每个时间点到现在的毫秒数，并确保都是正数
-    const schedulesToSend = validSchedules.map(s => {
-        const timeUntilLock = s.time.getTime() - now.getTime();
-        console.log(`时间设置：${formatTime(s)}, 剩余毫秒：${timeUntilLock}`);
-        return {
-            time: timeUntilLock > 0 ? timeUntilLock : 0,
-            id: s.id,
-            isDaily: s.isDaily, // 添加是否每天执行的标记
-            scheduledTime: s.time // 保存原始的预定时间
-        };
-    }).filter(s => s.time > 0);
-
-    if (schedulesToSend.length === 0) {
-        isSaving.value = false
-        saveMessage.value = { type: 'error', text: '没有有效的未来时间设置' }
-        setTimeout(() => {
-            saveMessage.value = null
-        }, 3000)
-        return
-    }
-
-    // 发送多次定时设置到主进程
-    console.log('Sending schedules to main process:', schedulesToSend);
-    // 确保scheduledTime是ISO字符串格式，方便在主进程中重新构造Date对象
-    const schedulesToSendProcessed = schedulesToSend.map(s => ({
-        ...s,
-        scheduledTime: s.scheduledTime.toISOString() // 转换为ISO字符串
-    }));
-    window.api.send('set-multi-schedules', {
-        schedules: schedulesToSendProcessed,
-        mode: MODES.SCHEDULE
-    });
-
-    // 更新schedules，只保留有效的未来时间
-    schedules.value = validSchedules;
 }
 
 // 监听来自主进程的锁屏结果
@@ -224,6 +233,12 @@ onMounted(() => {
     
     // 监听锁屏执行结果
     window.api.on('lock-execution-result', handleLockExecutionResult)
+
+    // 初始化长度记录器
+    window.lastSchedulesLength = 0;
+
+    // 加载保存的定时设置
+    loadSavedSchedules();
 })
 
 onUnmounted(() => {
@@ -366,12 +381,6 @@ onUnmounted(() => {
     background: var(--danger-light);
 }
 
-.action-button {
-    width: 100%;
-    margin-top: var(--spacing-md);
-    background: var(--success);
-}
-
 .el-time-picker {
     --el-border-color: var(--border-subtle);
 }
@@ -439,32 +448,6 @@ button:disabled {
     color: var(--text-secondary);
     font-style: italic;
     padding: var(--spacing-md);
-}
-
-.action-button {
-    width: 100%;
-    height: 40px;
-    font-size: 1rem;
-    font-weight: 600;
-    background: var(--bg-gradient);
-    color: white;
-    border: none;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    transition: var(--transition-normal);
-    box-shadow: var(--shadow-sm);
-    letter-spacing: 0.5px;
-    margin-top: var(--spacing-sm);
-}
-
-.action-button:hover:not(:disabled) {
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
-}
-
-.action-button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
 }
 
 /* Element Plus 样式覆盖 */

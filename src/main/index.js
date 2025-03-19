@@ -3,6 +3,10 @@ import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
 import { exec } from 'child_process';
+import Store from 'electron-store';
+
+// 创建一个新的 Store 实例
+const store = new Store();
 
 function createWindow() {
   // 获取主屏幕尺寸
@@ -132,38 +136,32 @@ app.whenReady().then(() => {
     }
   });
 
+  // 处理获取保存的定时设置的请求
+  ipcMain.handle('get-saved-schedules', () => {
+    return store.get('multiSchedules', []);
+  });
+
   // 监听多次定时设置事件
-  ipcMain.on('set-multi-schedules', (event, { schedules, mode }) => {
+  ipcMain.on('set-multi-schedules', (event, { schedules, mode, isDelete, isSilent }) => {
+    // 保存定时设置到 electron-store
+    store.set('multiSchedules', schedules);
     if (!Array.isArray(schedules)) {
-        console.error('无效的定时设置格式');
-        event.sender.send('multi-schedule-result', { 
-            success: false, 
-            error: '无效的定时设置格式',
-            fromMultiSchedule: true 
-        });
         return;
     }
     console.log('接收到多次定时设置:', schedules);
 
     try {
-      // 验证并过滤定时设置
+      // 验证并过滤定时设置，只接受正数时间
       const validSchedules = schedules.filter(schedule => {
-        return schedule.time > 0 && Number.isFinite(schedule.time);
+        return Number.isFinite(schedule.time) && schedule.time > 0;
       });
 
       if (validSchedules.length === 0) {
-        console.log('没有有效的定时设置');
-        event.reply('multi-schedule-result', { 
-          success: false, 
-          error: '没有有效的定时设置',
-          fromMultiSchedule: true
-        });
+        // 如果没有有效的定时设置，静默返回
         return;
       }
 
-      // 根据模式清理旧定时器
-    const { mode } = schedules[0];
-    // 清理当前模式对应的旧定时器
+      // 清理当前模式对应的旧定时器
     if (lockTimerIds.has(mode)) {
       const oldTimers = lockTimerIds.get(mode).get(event.sender.id);
       if (Array.isArray(oldTimers)) {
@@ -213,17 +211,19 @@ app.whenReady().then(() => {
       // 存储新的定时器信息
       lockTimerIds.set(event.sender.id, newTimers);
 
-      // 发送成功响应
-      const message = validSchedules.length === 1 
-        ? '已设置1个定时锁屏任务' 
-        : `已设置 ${validSchedules.length} 个定时锁屏任务`;
-      
-      console.log(message);
-      event.reply('multi-schedule-result', { 
-        success: true, 
-        message: message,
-        fromMultiSchedule: true
-      });
+      // 只在非删除且非静默操作时发送成功响应
+      if (!isDelete && !isSilent) {
+        const message = validSchedules.length === 1 
+          ? '已设置1个定时锁屏任务' 
+          : `已设置 ${validSchedules.length} 个定时锁屏任务`;
+        
+        console.log(message);
+        event.reply('multi-schedule-result', { 
+          success: true, 
+          message: message,
+          fromMultiSchedule: true
+        });
+      }
 
     } catch (error) {
       console.error('设置定时器时出错:', error);
@@ -248,6 +248,14 @@ app.whenReady().then(() => {
   });
 
   createWindow();
+
+  // 从 electron-store 加载定时设置
+  const savedSchedules = store.get('multiSchedules');
+  if (savedSchedules) {
+    console.log('从存储中加载定时设置:', savedSchedules);
+    // 这里可以发送一个事件到渲染进程，通知它加载保存的定时设置
+    BrowserWindow.getAllWindows()[0].webContents.send('load-saved-schedules', savedSchedules);
+  }
 
   app.on('activate', function () {
     // 在 macOS 上，当点击应用程序的停靠图标且没有其他窗口打开时，通常会重新创建一个窗口
