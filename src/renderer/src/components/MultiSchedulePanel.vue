@@ -69,7 +69,8 @@ const handleSchedulesChange = (schedules, isInitialLoad = false) => {
   }));
 
   // 添加一个标记，表示这是删除操作
-  const isDelete = window.lastSchedulesLength > schedules.length;
+  const isModeSwitch = window.isSwitchingMode;
+const isDelete = window.lastSchedulesLength > schedules.length;
   window.lastSchedulesLength = schedules.length;
 
   // 如果有有效的定时任务，或者这是一个删除操作，才发送更新
@@ -78,7 +79,7 @@ const handleSchedulesChange = (schedules, isInitialLoad = false) => {
       schedules: schedulesToSend,
       mode: MODES.SCHEDULE,
       isDelete, // 传递删除标记
-      isSilent: isInitialLoad // 初始加载时静默设置
+      isSilent: isInitialLoad || isModeSwitch // 静默模式包含初始加载和模式切换
     });
   }
 };
@@ -242,7 +243,6 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-    schedules.value = []
     newTimeValue.value = null
     clearTimeout(saveMessage.value?.timer)
 })

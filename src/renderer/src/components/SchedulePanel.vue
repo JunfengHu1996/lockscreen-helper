@@ -58,8 +58,12 @@ const props = defineProps({
 const emit = defineEmits(['update:time-value', 'start', 'cancel', 'switch-mode'])
 
 const setMode = (isMulti) => {
+  window.isSwitchingMode = true
   isMultiScheduleMode.value = isMulti
   emit('switch-mode', isMultiScheduleMode.value)
+  setTimeout(() => {
+    window.isSwitchingMode = false
+  }, 1000)
 }
 </script>
 
