@@ -268,6 +268,7 @@ onUnmounted(() => {
 }
 
 .schedules-list {
+    background: transparent !important;
     gap: var(--spacing-xs);
     padding: 2px;
 }
@@ -306,8 +307,8 @@ onUnmounted(() => {
 }
 
 .time-picker {
-    flex-grow: 1;
-    height: 32px;  /* 统一高度 */
+    flex-grow: 0;
+    height: 48px;
 }
 
 :deep(.el-input__wrapper) {
@@ -457,15 +458,17 @@ button:disabled {
 /* Element Plus 样式覆盖 */
 
 :deep(.el-input__wrapper) {
-    background-color: rgba(255, 255, 255, 0.8) !important;
-    border: 1px solid var(--primary) !important;
+    background-color: rgba(255, 255, 255, 0.5) !important;
+    border: 2px solid transparent !important;
     box-shadow: var(--shadow-sm) !important;
     transition: var(--transition-normal);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
+    height: 48px;
+    padding: 0 var(--spacing-md);
 }
 
 :deep(.el-time-picker) {
-    width: 100%;
+    width: 180px;
 }
 
 :deep(.el-checkbox__label) {
@@ -483,25 +486,104 @@ button:disabled {
 }
 
 :deep(.el-input__inner) {
-    font-size: 1rem !important;
+    font-size: 1.125rem !important;
     color: var(--text-primary) !important;
+    height: 48px !important;
     font-weight: 500 !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
 }
 
 :deep(.el-input__inner::placeholder) {
     color: var(--text-secondary) !important;
-    font-size: 0.875rem !important;
+    font-size: 1rem !important;
     font-weight: 400 !important;
     opacity: 0.7;
 }
 
+:deep(.el-input__prefix) {
+    display: flex;
+    align-items: center;
+    height: 100%;
+}
+
+:deep(.el-input__suffix) {
+    display: flex;
+    align-items: center;
+    height: 100%;
+}
+
 :deep(.el-input__wrapper:hover) {
-    border-color: var(--primary-dark) !important;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md) !important;
+    background-color: rgba(255, 255, 255, 0.8) !important;
 }
 
 :deep(.el-input__wrapper.is-focus) {
     border-color: var(--primary) !important;
-    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2) !important;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2) !important;
+    transform: translateY(-2px);
+    background-color: rgba(255, 255, 255, 0.8) !important;
+}
+
+:deep(.el-input__wrapper.is-disabled) {
+    background-color: rgba(255, 255, 255, 0.5) !important;
+    cursor: not-allowed;
+    opacity: 0.8;
+    transform: none !important;
+}
+
+/* 调整时间选择器弹出框样式 */
+:deep(.el-time-panel) {
+    border: none;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    backdrop-filter: blur(10px);
+    background-color: var(--bg-light);
+}
+
+:deep(.el-time-spinner__item) {
+    color: var(--text-primary);
+    font-size: 1rem;
+    height: 32px;
+    line-height: 32px;
+}
+
+:deep(.el-time-spinner__item.active:not(.disabled)) {
+    color: var(--primary);
+    font-weight: 600;
+    background-color: transparent !important;
+}
+
+:deep(.el-time-spinner__item.selected:not(.disabled)) {
+    background-color: transparent !important;
+}
+
+:deep(.el-time-spinner__item:hover:not(.disabled)) {
+    background-color: rgba(102, 126, 234, 0.1) !important;
+}
+
+:deep(.el-time-spinner__list) {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+}
+
+:deep(.el-time-panel__footer) {
+    border-top: 1px solid rgba(102, 126, 234, 0.1);
+}
+
+:deep(.el-time-panel__btn) {
+    color: var(--primary);
+    border: none;
+    background: transparent;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+:deep(.el-time-panel__btn.confirm) {
+    font-weight: 600;
 }
 
 .save-message {
