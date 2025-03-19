@@ -284,7 +284,7 @@ onUnmounted(() => {
 
 <style scoped>
 .multi-schedule-panel {
-    padding: var(--spacing-md);
+    padding: var(--spacing-sm);
     background: var(--background-secondary);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-sm);
@@ -292,9 +292,10 @@ onUnmounted(() => {
 
 .time-picker-container {
     background: white;
-    padding: var(--spacing-md);
+    padding: var(--spacing-sm);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-xs);
+    margin-bottom: var(--spacing-sm);
 }
 
 .schedules-list {
@@ -438,12 +439,13 @@ button:disabled {
 .schedules-list {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-sm);
+    gap: var(--spacing-xs);
     max-height: 200px;
     overflow-y: auto;
-    padding: var(--spacing-sm);
+    padding: var(--spacing-xs);
     background-color: rgba(255, 255, 255, 0.5);
     border-radius: var(--radius-sm);
+    margin-top: var(--spacing-xs);
 }
 
 .schedule-item {
@@ -453,7 +455,12 @@ button:disabled {
     padding: var(--spacing-xs) var(--spacing-sm);
     background-color: white;
     border-radius: var(--radius-sm);
-    box-shadow: var(--shadow-sm);
+    box-shadow: var(--shadow-xs);
+    margin-bottom: var(--spacing-xs);
+}
+
+.schedule-item:last-child {
+    margin-bottom: 0;
 }
 
 .schedule-time {

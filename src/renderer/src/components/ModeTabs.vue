@@ -30,7 +30,7 @@ defineEmits(['change'])
 <style scoped>
 .mode-tabs {
   display: flex;
-  margin-bottom: var(--spacing-lg);
+  margin-bottom: var(--spacing-md); /* 从 lg 改为 md */
   border-radius: var(--radius-md);
   overflow: hidden;
   background-color: rgba(102, 126, 234, 0.1);
