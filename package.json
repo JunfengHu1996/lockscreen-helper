@@ -1,7 +1,7 @@
 {
-  "name": "my-app",
+  "name": "screen-lock-assistant",
   "version": "1.0.0",
-  "description": "An Electron application with Vue",
+  "description": "一个简单易用的定时锁屏小助手",
   "main": "./out/main/index.js",
   "author": "example.com",
   "homepage": "https://electron-vite.org",

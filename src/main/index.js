@@ -25,7 +25,7 @@ function createWindow() {
     maxWidth: 800, // 最大宽度
     maxHeight: height, // 最大高度为屏幕高度的95%
     center: true,
-    title: '定时锁屏',
+    title: '锁屏小助手',
     icon: icon,
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
