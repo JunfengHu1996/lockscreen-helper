@@ -107,15 +107,23 @@ app.whenReady().then(() => {
       clearTimeout(lockTimerIds.get(event.sender.id));
     }
     
+    // 记录开始时间，用于确保精确计时
+    const startTime = Date.now();
+    const targetTime = startTime + (lockTime * 1000);
+    
     // 设置模式对应的新定时器
     const timerId = setTimeout(() => {
+      console.log(`执行锁屏，计划时间：${lockTime}秒，实际延迟：${(Date.now() - startTime) / 1000}秒`);
       lockScreen(event);
       // 定时器执行后从Map中移除
       lockTimerIds.delete(event.sender.id);
     }, lockTime * 1000);
     
-    // 存储定时器ID
-    lockTimerIds.set(event.sender.id, timerId);
+    // 存储定时器ID和目标时间
+    lockTimerIds.set(event.sender.id, {
+      id: timerId,
+      targetTime: targetTime
+    });
   });
   
   // 监听取消锁屏计时事件
@@ -129,7 +137,13 @@ app.whenReady().then(() => {
           }
         });
       } else if (timers) {
-        clearTimeout(timers);
+        // 处理新格式的计时器对象
+        if (typeof timers === 'object' && timers.id) {
+          clearTimeout(timers.id);
+        } else {
+          // 兼容旧格式
+          clearTimeout(timers);
+        }
       }
       lockTimerIds.delete(event.sender.id);
       console.log('锁屏计时已取消');
@@ -278,9 +292,23 @@ app.whenReady().then(() => {
   app.on('before-quit', () => {
     for (const [_, timers] of lockTimerIds) {
       if (Array.isArray(timers)) {
-        timers.forEach(clearTimeout);
+        timers.forEach(timer => {
+          if (timer && timer.timeoutId) {
+            clearTimeout(timer.timeoutId);
+          } else if (timer && timer.id) {
+            clearTimeout(timer.id);
+          } else if (timer) {
+            clearTimeout(timer);
+          }
+        });
       } else if (timers) {
-        clearTimeout(timers);
+        // 处理新格式的计时器对象
+        if (typeof timers === 'object' && timers.id) {
+          clearTimeout(timers.id);
+        } else {
+          // 兼容旧格式
+          clearTimeout(timers);
+        }
       }
     }
     lockTimerIds.clear();

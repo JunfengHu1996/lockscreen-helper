@@ -13,12 +13,15 @@ export function useTimer(options = { isScheduleMode: false }) {
     isRunning.value = true
     countdown.value = duration
     
+    const startTime = Date.now()
     timer = setInterval(() => {
-      countdown.value--
+      const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000)
+      countdown.value = duration - elapsedSeconds
+      
       if (countdown.value <= 0) {
         stopTimer()
       }
-    }, 1000)
+    }, 100) // 更新频率提高到100ms，使显示更平滑
   }
   
   const stopTimer = () => {
