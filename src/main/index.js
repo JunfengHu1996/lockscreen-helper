@@ -8,6 +8,24 @@ import Store from 'electron-store';
 // 创建一个新的 Store 实例
 const store = new Store();
 
+// 确保应用程序只有一个实例
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', (event, commandLine, workingDirectory) => {
+    // 当运行第二个实例时，将焦点放在第一个实例的窗口上
+    if (mainWindowRef) {
+      if (mainWindowRef.isMinimized()) {
+        mainWindowRef.restore();
+      }
+      mainWindowRef.show();
+      mainWindowRef.focus();
+    }
+  });
+}
+
 // 声明全局变量以保存托盘实例和主窗口引用
 let tray = null;
 let mainWindowRef = null;
