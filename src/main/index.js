@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, screen } from 'electron';
+import { app, shell, BrowserWindow, ipcMain, screen, Tray, Menu } from 'electron';
 import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
@@ -8,13 +8,17 @@ import Store from 'electron-store';
 // 创建一个新的 Store 实例
 const store = new Store();
 
+// 声明全局变量以保存托盘实例和主窗口引用
+let tray = null;
+let mainWindowRef = null;
+
 function createWindow() {
   // 获取主屏幕尺寸
   const primaryDisplay = screen.getPrimaryDisplay();
   const { height } = primaryDisplay.workAreaSize;
   
   // 创建浏览器窗口
-  const mainWindow = new BrowserWindow({
+  mainWindowRef = new BrowserWindow({
     width: 500,
     height: Math.floor(height * 0.9), // 设置为屏幕高度的90%
     show: false,
@@ -34,11 +38,48 @@ function createWindow() {
     }
   });
 
-  mainWindow.on('ready-to-show', () => {
-    mainWindow.show();
+  mainWindowRef.on('ready-to-show', () => {
+    mainWindowRef.show();
   });
 
-  mainWindow.webContents.setWindowOpenHandler((details) => {
+  // 创建系统托盘
+  tray = new Tray(icon);
+  tray.setToolTip('锁屏小助手');
+
+  // 创建托盘菜单
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: '显示主窗口',
+      click: () => {
+        mainWindowRef.show();
+      }
+    },
+    {
+      label: '退出',
+      click: () => {
+        app.quit();
+      }
+    }
+  ]);
+
+  // 设置托盘菜单
+  tray.setContextMenu(contextMenu);
+
+  // 点击托盘图标显示主窗口
+  tray.on('click', () => {
+    mainWindowRef.show();
+  });
+
+  // 处理窗口关闭按钮点击事件
+  mainWindowRef.on('close', (event) => {
+    // 如果不是要退出程序，则阻止默认行为
+    if (!app.isQuitting) {
+      event.preventDefault();
+      mainWindowRef.hide();
+    }
+  });
+
+  mainWindowRef.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url);
     return { action: 'deny' };
   });
@@ -46,9 +87,9 @@ function createWindow() {
   // 基于 electron-vite cli 的渲染器热更新
   // 开发环境加载远程 URL，生产环境加载本地 HTML 文件
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL']);
+    mainWindowRef.loadURL(process.env['ELECTRON_RENDERER_URL']);
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
+    mainWindowRef.loadFile(join(__dirname, '../renderer/index.html'));
   }
 }
 
@@ -70,7 +111,7 @@ app.whenReady().then(() => {
 
   // 存储定时器ID，以便可以取消
   // 按模式存储定时器：{mode => {senderId => timers}}
-  let lockTimerIds = new Map([
+let lockTimerIds = new Map([
     ['single', new Map()],
     ['multi', new Map()]
   ]);
@@ -288,31 +329,41 @@ app.whenReady().then(() => {
     }
   });
 
-  // 在应用退出前清理所有定时器
-  app.on('before-quit', () => {
-    for (const [_, timers] of lockTimerIds) {
-      if (Array.isArray(timers)) {
-        timers.forEach(timer => {
-          if (timer && timer.timeoutId) {
-            clearTimeout(timer.timeoutId);
-          } else if (timer && timer.id) {
-            clearTimeout(timer.id);
-          } else if (timer) {
-            clearTimeout(timer);
-          }
-        });
-      } else if (timers) {
-        // 处理新格式的计时器对象
-        if (typeof timers === 'object' && timers.id) {
-          clearTimeout(timers.id);
-        } else {
-          // 兼容旧格式
-          clearTimeout(timers);
+  // 在应用退出前清理所有定时器并销毁托盘图标
+app.on('before-quit', () => {
+  // 标记应用正在退出
+  app.isQuitting = true;
+  
+  // 销毁托盘图标
+  if (tray) {
+    tray.destroy();
+    tray = null;
+  }
+  
+  // 清理所有定时器
+  for (const [_, timers] of lockTimerIds) {
+    if (Array.isArray(timers)) {
+      timers.forEach(timer => {
+        if (timer && timer.timeoutId) {
+          clearTimeout(timer.timeoutId);
+        } else if (timer && timer.id) {
+          clearTimeout(timer.id);
+        } else if (timer) {
+          clearTimeout(timer);
         }
+      });
+    } else if (timers) {
+      // 处理新格式的计时器对象
+      if (typeof timers === 'object' && timers.id) {
+        clearTimeout(timers.id);
+      } else {
+        // 兼容旧格式
+        clearTimeout(timers);
       }
     }
-    lockTimerIds.clear();
-  });
+  }
+  lockTimerIds.clear();
+});
 
   createWindow();
 
@@ -326,11 +377,16 @@ app.whenReady().then(() => {
 
   app.on('activate', function () {
     // 在 macOS 上，当点击应用程序的停靠图标且没有其他窗口打开时，通常会重新创建一个窗口
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  else {
+    // 如果窗口存在但是隐藏的，则显示窗口
+    mainWindowRef.show();
+  }
   });
 });
 
 // 当所有窗口关闭时退出应用程序，除非是在 macOS 上。在 macOS 上，应用程序及其菜单栏通常会保持活动状态，直到用户明确使用 Cmd + Q 退出
+
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
