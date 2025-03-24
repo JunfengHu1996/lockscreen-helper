@@ -11,13 +11,13 @@
                 <el-checkbox v-model="isDaily" class="daily-checkbox">每天执行</el-checkbox>
             </div>
         </div>
-        <div v-if="schedules.length > 0" class="schedules-list">
-            <div v-for="schedule in schedules" :key="schedule.id" class="schedule-item">
-    <span class="schedule-time">{{ formatTime(schedule) }}</span>
-    <button @click="removeSchedule(schedule.id)" class="remove-button">
-      删除
-    </button>
-</div>
+        <div v-if="sortedSchedules.length > 0" class="schedules-list">
+            <div v-for="schedule in sortedSchedules" :key="schedule.id" class="schedule-item">
+                <span class="schedule-time">{{ formatTime(schedule) }}</span>
+                <button @click="removeSchedule(schedule.id)" class="remove-button">
+                    删除
+                </button>
+            </div>
         </div>
         <div v-else class="no-schedules">
             暂无定时设置
@@ -38,6 +38,26 @@ const schedules = ref([])
 const isSaving = ref(false)
 const saveMessage = ref(null)
 const isDaily = ref(false)
+
+// 计算属性：按24小时制时间排序的任务列表
+const sortedSchedules = computed(() => {
+    return [...schedules.value].sort((a, b) => {
+        // 获取时间的小时和分钟
+        const timeA = a.time
+        const timeB = b.time
+        const hoursA = timeA.getHours()
+        const hoursB = timeB.getHours()
+        const minutesA = timeA.getMinutes()
+        const minutesB = timeB.getMinutes()
+
+        // 首先按小时比较
+        if (hoursA !== hoursB) {
+            return hoursA - hoursB
+        }
+        // 如果小时相同，则按分钟比较
+        return minutesA - minutesB
+    })
+})
 
 // 加载保存的定时设置
 const loadSavedSchedules = () => {
