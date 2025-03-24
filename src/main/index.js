@@ -3,6 +3,7 @@ import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
 import { exec } from 'child_process';
+import { homedir } from 'os';
 // 由于 electron-store 是 ES Module，使用动态导入
 let store;
 (async () => {
@@ -112,6 +113,11 @@ function createWindow() {
     mainWindowRef.loadFile(join(__dirname, '../renderer/index.html'));
   }
 }
+
+// 设置应用程序的用户数据和缓存目录
+const userDataPath = join(homedir(), '.screen-lock-assistant');
+app.setPath('userData', userDataPath);
+app.setPath('cache', join(userDataPath, 'cache'));
 
 // 此方法将在 Electron 完成初始化并准备好创建浏览器窗口时调用
 // 某些 API 只能在此事件发生后使用
