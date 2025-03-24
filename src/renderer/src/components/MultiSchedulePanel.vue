@@ -316,6 +316,30 @@ onUnmounted(() => {
     margin-top: var(--spacing-xs);
     box-sizing: border-box;
     padding: 0;
+    /* 自定义滚动条样式 */
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: transparent transparent; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+    
+    /* Webkit浏览器的滚动条样式 */
+    &::-webkit-scrollbar {
+        width: 6px;
+        background: transparent;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+        background-color: rgba(102, 126, 234, 0.2);
+        border-radius: 3px;
+    }
+    
+    /* 鼠标悬停时显示滚动条 */
+    &:hover {
+        scrollbar-color: rgba(102, 126, 234, 0.2) transparent; /* Firefox */
+        
+        &::-webkit-scrollbar-thumb {
+            background-color: rgba(102, 126, 234, 0.2);
+        }
+    }
 }
 
 
