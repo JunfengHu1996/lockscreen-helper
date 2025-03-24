@@ -3,10 +3,12 @@ import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
 import { exec } from 'child_process';
-import Store from 'electron-store';
-
-// 创建一个新的 Store 实例
-const store = new Store();
+// 由于 electron-store 是 ES Module，使用动态导入
+let store;
+(async () => {
+  const { default: Store } = await import('electron-store');
+  store = new Store();
+})();
 
 // 确保应用程序只有一个实例
 const gotTheLock = app.requestSingleInstanceLock();
@@ -211,12 +213,22 @@ let lockTimerIds = new Map([
   });
 
   // 处理获取保存的定时设置的请求
-  ipcMain.handle('get-saved-schedules', () => {
+  ipcMain.handle('get-saved-schedules', async () => {
+    // 确保 store 已经初始化
+    if (!store) {
+      const { default: Store } = await import('electron-store');
+      store = new Store();
+    }
     return store.get('multiSchedules', []);
   });
 
   // 监听多次定时设置事件
-  ipcMain.on('set-multi-schedules', (event, { schedules, mode, isDelete, isSilent }) => {
+  ipcMain.on('set-multi-schedules', async (event, { schedules, mode, isDelete, isSilent }) => {
+    // 确保 store 已经初始化
+    if (!store) {
+      const { default: Store } = await import('electron-store');
+      store = new Store();
+    }
     // 保存定时设置到 electron-store
     store.set('multiSchedules', schedules);
     if (!Array.isArray(schedules)) {
@@ -386,12 +398,19 @@ app.on('before-quit', () => {
   createWindow();
 
   // 从 electron-store 加载定时设置
-  const savedSchedules = store.get('multiSchedules');
-  if (savedSchedules) {
-    console.log('从存储中加载定时设置:', savedSchedules);
-    // 这里可以发送一个事件到渲染进程，通知它加载保存的定时设置
-    BrowserWindow.getAllWindows()[0].webContents.send('load-saved-schedules', savedSchedules);
-  }
+  setTimeout(async () => {
+    // 确保 store 已经初始化
+    if (!store) {
+      const { default: Store } = await import('electron-store');
+      store = new Store();
+    }
+    const savedSchedules = store.get('multiSchedules');
+    if (savedSchedules) {
+      console.log('从存储中加载定时设置:', savedSchedules);
+      // 这里可以发送一个事件到渲染进程，通知它加载保存的定时设置
+      BrowserWindow.getAllWindows()[0].webContents.send('load-saved-schedules', savedSchedules);
+    }
+  }, 1000); // 给予足够的时间让 store 初始化
 
   app.on('activate', function () {
     // 在 macOS 上，当点击应用程序的停靠图标且没有其他窗口打开时，通常会重新创建一个窗口
