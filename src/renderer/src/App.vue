@@ -77,8 +77,11 @@ const handleModeChange = (newMode) => {
   // 标记模式切换，以便主进程知道这是一个模式切换操作
   window.isSwitchingMode = true;
   
-  // 清除当前模式的状态
-  clearCurrentMode();
+  // 只有在从定时模式切换到倒计时模式时才清除当前模式状态
+  // 从倒计时切换到定时模式时，保留倒计时任务
+  if (mode.value === MODES.SCHEDULE && newMode === MODES.COUNTDOWN) {
+    clearCurrentMode();
+  }
   
   // 更新模式和标题
   mode.value = newMode;
@@ -111,6 +114,7 @@ const cancelLockTimer = () => {
 
 const clearCurrentMode = () => {
   // 只在倒计时模式下取消定时器
+  // 注意：我们在handleModeChange中已经控制了何时调用此函数
   if (mode.value === MODES.COUNTDOWN) {
     cancelLockTimer()
   }
