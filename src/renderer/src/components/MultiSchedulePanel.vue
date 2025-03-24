@@ -289,6 +289,9 @@ onUnmounted(() => {
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-sm);
     border: 1px solid rgba(102, 126, 234, 0.25);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
 }
 
 .time-picker-container {
@@ -299,17 +302,22 @@ onUnmounted(() => {
     margin-bottom: var(--spacing-sm);
     border: 1px solid rgba(102, 126, 234, 0.15);
     backdrop-filter: blur(8px);
+    box-sizing: border-box;
 }
 
 .schedules-list {
-    background: transparent !important;
+    display: flex;
+    flex-direction: column;
     gap: var(--spacing-xs);
+    max-height: 200px;
+    overflow-y: auto;
+    background: transparent !important;
+    border-radius: var(--radius-sm);
+    margin-top: var(--spacing-xs);
+    box-sizing: border-box;
+    padding: 0;
 }
 
-.schedule-item {
-    transition: var(--transition-fast);
-    border: 1px solid var(--border-subtle);
-}
 
 .schedule-item:hover {
     border-color: var(--primary);
@@ -438,17 +446,6 @@ button:disabled {
     cursor: not-allowed;
 }
 
-.schedules-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-xs);
-    max-height: 200px;
-    overflow-y: auto;
-    padding: var(--spacing-xs);
-    background-color: rgba(255, 255, 255, 0.5);
-    border-radius: var(--radius-sm);
-    margin-top: var(--spacing-xs);
-}
 
 .schedule-item {
     display: flex;
@@ -462,6 +459,8 @@ button:disabled {
     border: 1px solid rgba(102, 126, 234, 0.15);
     backdrop-filter: blur(4px);
     transition: all 0.2s ease;
+    box-sizing: border-box;
+    width: 100%;
 }
 
 .schedule-item:hover {
