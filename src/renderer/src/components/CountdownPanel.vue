@@ -287,6 +287,7 @@ watch(() => props.time, (newTime) => {
   box-shadow: var(--shadow-xs);
   border: 1px solid rgba(102, 126, 234, 0.15);
   backdrop-filter: blur(8px);
+  align-items: center; /* 添加居中对齐 */
 }
 
 .countdown {
@@ -297,6 +298,9 @@ watch(() => props.time, (newTime) => {
   letter-spacing: 2px;
   line-height: 1.2;
   margin-bottom: var(--spacing-md);
+  min-width: 320px; /* 添加固定最小宽度 */
+  display: flex;
+  justify-content: center; /* 水平居中 */
 }
 
 .countdown-info {
