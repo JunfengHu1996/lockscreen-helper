@@ -140,17 +140,23 @@ watch(() => props.time, (newTime) => {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
-  padding: var(--spacing-md) 0 var(--spacing-sm);
+  padding: var(--spacing-sm);
   height: auto;
   min-height: auto;
+  background: rgba(102, 126, 234, 0.12);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid rgba(102, 126, 234, 0.25);
 }
 
 .time-picker {
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.7);
   border-radius: var(--radius-md);
   padding: var(--spacing-md);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-xs);
   margin-bottom: var(--spacing-sm);
+  border: 1px solid rgba(102, 126, 234, 0.15);
+  backdrop-filter: blur(8px);
 }
 
 .time-inputs {
@@ -169,30 +175,35 @@ watch(() => props.time, (newTime) => {
 
 .time-input {
   width: 70px;
-  height: 60px;
-  font-size: 1.5rem;
-  font-weight: 600;
-  border: 2px solid transparent;
-  border-radius: var(--radius-sm);
-  background-color: rgba(255, 255, 255, 0.8);
-  box-shadow: var(--shadow-sm);
+  height: 48px;
+  font-size: 1.125rem;
+  font-weight: 500;
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  border-radius: var(--radius-md);
+  background-color: rgba(255, 255, 255, 0.5);
+  box-shadow: var(--shadow-xs);
   transition: var(--transition-normal);
   -moz-appearance: textfield;
   appearance: textfield;
   text-align: center;
   padding: 0;
-  line-height: 60px; /* 与height相同，实现垂直居中 */
+  line-height: 48px;
+  backdrop-filter: blur(4px);
 }
 
 .time-input:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.15);
+  transform: translateY(-1px);
+  background-color: rgba(255, 255, 255, 0.85);
 }
 
 .time-input:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+  background-color: rgba(255, 255, 255, 0.75);
+  border-color: rgba(102, 126, 234, 0.3);
 }
 
 .time-input:disabled {
@@ -233,17 +244,17 @@ watch(() => props.time, (newTime) => {
 }
 .action-button {
   width: 100%;
-  height: 50px;
-  font-size: 1.125rem;
-  font-weight: 600;
-  background: var(--bg-gradient);
+  height: 48px;
+  font-size: 1rem;
+  font-weight: 500;
+  background: var(--primary);
   color: white;
   border: none;
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: var(--transition-normal);
-  box-shadow: var(--shadow-md);
-  letter-spacing: 1px;
+  box-shadow: var(--shadow-xs);
+  letter-spacing: 0.5px;
   position: relative;
   overflow: hidden;
   display: flex;
@@ -253,25 +264,10 @@ watch(() => props.time, (newTime) => {
   margin-top: var(--spacing-sm);
 }
 
-.action-button::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(rgba(255, 255, 255, 0.2), transparent);
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-
-.action-button:not(:disabled):hover::after {
-  opacity: 1;
-}
-
 .action-button:not(:disabled):hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
 }
 
 .action-button:disabled {
@@ -282,21 +278,24 @@ watch(() => props.time, (newTime) => {
 .countdown-actions {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
+  gap: var(--spacing-md);
   width: 100%;
   margin-top: var(--spacing-md);
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  box-shadow: var(--shadow-xs);
+  border: 1px solid rgba(102, 126, 234, 0.15);
+  backdrop-filter: blur(8px);
 }
 
 .countdown {
-  font-size: 5rem;
-  font-weight: 700;
+  font-size: 4rem;
+  font-weight: 600;
   text-align: center;
-  background: var(--bg-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--primary);
   letter-spacing: 2px;
-  text-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
-  animation: pulse 1s infinite alternate;
+  line-height: 1.2;
   margin-bottom: var(--spacing-md);
 }
 
@@ -304,32 +303,31 @@ watch(() => props.time, (newTime) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--spacing-md) var(--spacing-lg);
+  padding: var(--spacing-sm) var(--spacing-md);
   background-color: rgba(102, 126, 234, 0.1);
   border-radius: var(--radius-sm);
-  margin-top: auto;
+  border: 1px solid rgba(102, 126, 234, 0.15);
 }
 
 .countdown-text {
   color: var(--text-primary);
-  font-size: 1.125rem;
+  font-size: 0.875rem;
   font-weight: 500;
 }
 
 .cancel-button {
   margin-left: var(--spacing-md);
-  padding: 0.5rem 1.25rem;
-  font-size: 0.875rem;
-  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
   color: var(--error);
-  background-color: white;
+  background-color: transparent;
   border: 1px solid var(--error);
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: var(--transition-normal);
-  letter-spacing: 0.5px;
-  height: 36px;
-  min-width: 80px;
+  height: 32px;
+  min-width: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -338,24 +336,12 @@ watch(() => props.time, (newTime) => {
 .cancel-button:hover {
   color: white;
   background-color: var(--error);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-sm);
 }
 
 .cancel-button:active {
   transform: translateY(0);
 }
 
-@keyframes pulse {
-  from {
-    opacity: 0.9;
-    transform: scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
 
 .fade-enter-active, .fade-leave-active {
   transition: opacity 0.5s ease;
