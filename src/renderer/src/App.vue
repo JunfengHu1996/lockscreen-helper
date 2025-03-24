@@ -21,17 +21,7 @@
         />
 
         <!-- 定时模式 -->
-
-        <schedule-panel
-          v-show="mode === 'schedule'"
-          :time-value="scheduleTimeValue"
-          :is-scheduled="isScheduled"
-          :formatted-time="formattedScheduleTime"
-          :is-valid-time="isValidScheduleTime"
-          @start="startScheduleTimer"
-          @cancel="cancelLockTimer"
-          @update:time-value="scheduleTimeValue = $event"
-        />
+        <schedule-panel v-show="mode === 'schedule'" />
 
         <!-- 操作结果提示 -->
 
@@ -48,7 +38,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useTimer } from './composables/useTimer'
 import { MODES, TIME_LIMITS } from './constants'
 
@@ -59,7 +49,7 @@ import CountdownPanel from './components/CountdownPanel.vue'
 import SchedulePanel from './components/SchedulePanel.vue'
 import ResultMessage from './components/ResultMessage.vue'
 
-// ============ 状态定义 ============
+  // ============ 状态定义 ============
 const title = ref('倒计时锁屏')
 const mode = ref(MODES.COUNTDOWN)
 const lockTime = ref(300) // 默认设置为5分钟
@@ -73,19 +63,8 @@ const {
   stopTimer: stopCountdown
 } = useTimer()
 
-// 定时状态
-const {
-  timeValue: scheduleTimeValue,
-  isRunning: isScheduled,
-  startTimer: startSchedule,
-  stopTimer: cancelSchedule,
-  formatTime: formatScheduleTime
-} = useTimer({ isScheduleMode: true })
-
-// 计算属性：格式化的定时时间
-const formattedScheduleTime = computed(() => {
-  return formatScheduleTime(scheduleTimeValue.value)
-})
+// 记录当前模式，用于取消定时时传递
+const currentMode = ref(MODES.COUNTDOWN)
 
 // ============ 常量和计算属性 ============
 const tabs = [
@@ -95,14 +74,21 @@ const tabs = [
 
 // ============ 方法定义 ============
 const handleModeChange = (newMode) => {
-  if (mode.value === newMode) return
-
-  // 切换前清理当前模式的状态
-  clearCurrentMode()
-
+  // 标记模式切换，以便主进程知道这是一个模式切换操作
+  window.isSwitchingMode = true;
+  
+  // 清除当前模式的状态
+  clearCurrentMode();
+  
   // 更新模式和标题
-  mode.value = newMode
-  title.value = newMode === MODES.COUNTDOWN ? '倒计时锁屏' : '定时锁屏'
+  mode.value = newMode;
+  currentMode.value = newMode;
+  title.value = newMode === MODES.COUNTDOWN ? '倒计时锁屏' : '定时锁屏';
+  
+  // 重置标记
+  setTimeout(() => {
+    window.isSwitchingMode = false;
+  }, 100);
 }
 
 const startCountdownTimer = () => {
@@ -112,57 +98,22 @@ const startCountdownTimer = () => {
   window.api.send('start-lock-timer', lockTime.value)
 }
 
-const startScheduleTimer = () => {
-  if (!scheduleTimeValue.value || isScheduled.value) return
-
-  const now = new Date()
-  const targetDate = new Date(scheduleTimeValue.value)
-  const scheduleDate = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-    targetDate.getHours(),
-    targetDate.getMinutes(),
-    0,
-    0
-  )
-
-  const scheduleDuration = scheduleDate - now
-
-  // 使用毫秒转换为秒
-  const durationInSeconds = Math.floor(scheduleDuration / 1000)
-  startSchedule(durationInSeconds)
-  window.api.send('start-lock-timer', durationInSeconds)
-}
-
-// 新增：检查选择的时间是否有效
-const isValidScheduleTime = computed(() => {
-  if (!scheduleTimeValue.value) return false
-  const now = new Date()
-  const targetDate = new Date(scheduleTimeValue.value)
-  const scheduleDate = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-    targetDate.getHours(),
-    targetDate.getMinutes(),
-    0,
-    0
-  )
-  return scheduleDate > now
-})
 
 const cancelLockTimer = () => {
   if (mode.value === MODES.COUNTDOWN) {
     stopCountdown()
-  } else {
-    cancelSchedule()
   }
-  window.api.send('cancel-lock-timer')
+  // 只在倒计时模式和用户主动取消时发送取消信号
+  if (mode.value === MODES.COUNTDOWN) {
+    window.api.send('cancel-lock-timer')
+  }
 }
 
 const clearCurrentMode = () => {
-  cancelLockTimer()
+  // 只在倒计时模式下取消定时器
+  if (mode.value === MODES.COUNTDOWN) {
+    cancelLockTimer()
+  }
 }
 
 const handleLockResult = (result) => {
@@ -225,9 +176,6 @@ const calculateScheduleDuration = (timeValue) => {
 
 // ============ 生命周期钩子 ============
 onMounted(() => {
-  // 初始化定时器时间为当前时间
-  scheduleTimeValue.value = new Date()
-
   // 监听锁屏结果
   window.api.on('lock-screen-result', handleLockResult)
 })

@@ -169,9 +169,12 @@ let lockTimerIds = new Map([
   ipcMain.on('start-lock-timer', (event, lockTime) => {
     console.log(`接收到锁屏请求，将在 ${lockTime} 秒后锁定屏幕`);
     
-    // 清除之前的定时器（如果有）
-    if (lockTimerIds.has(event.sender.id)) {
-      clearTimeout(lockTimerIds.get(event.sender.id));
+    // 清除之前的倒计时定时器（如果有）
+    if (lockTimerIds.get('single').has(event.sender.id)) {
+      const timer = lockTimerIds.get('single').get(event.sender.id);
+      if (timer && timer.id) {
+        clearTimeout(timer.id);
+      }
     }
     
     // 记录开始时间，用于确保精确计时
@@ -183,38 +186,39 @@ let lockTimerIds = new Map([
       console.log(`执行锁屏，计划时间：${lockTime}秒，实际延迟：${(Date.now() - startTime) / 1000}秒`);
       lockScreen(event);
       // 定时器执行后从Map中移除
-      lockTimerIds.delete(event.sender.id);
+      lockTimerIds.get('single').delete(event.sender.id);
     }, lockTime * 1000);
     
     // 存储定时器ID和目标时间
-    lockTimerIds.set(event.sender.id, {
+    lockTimerIds.get('single').set(event.sender.id, {
       id: timerId,
       targetTime: targetTime
     });
   });
   
   // 监听取消锁屏计时事件
-  ipcMain.on('cancel-lock-timer', (event) => {
-    if (lockTimerIds.has(event.sender.id)) {
-      const timers = lockTimerIds.get(event.sender.id);
+  ipcMain.on('cancel-lock-timer', (event, { mode = 'single' } = {}) => {
+    // 根据模式选择对应的定时器集合
+    const timersMap = lockTimerIds.get(mode);
+    if (timersMap && timersMap.has(event.sender.id)) {
+      const timers = timersMap.get(event.sender.id);
       if (Array.isArray(timers)) {
+        // 多次定时模式
         timers.forEach(timer => {
           if (timer && timer.timeoutId) {
             clearTimeout(timer.timeoutId);
           }
         });
       } else if (timers) {
-        // 处理新格式的计时器对象
+        // 单次定时模式
         if (typeof timers === 'object' && timers.id) {
           clearTimeout(timers.id);
         } else {
-          // 兼容旧格式
           clearTimeout(timers);
         }
       }
-      lockTimerIds.delete(event.sender.id);
-      console.log('锁屏计时已取消');
-      // 不发送取消消息，因为这可能是由设置新的定时引起的
+      timersMap.delete(event.sender.id);
+      console.log(`${mode}模式的锁屏计时已取消`);
     }
   });
 
