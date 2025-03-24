@@ -197,6 +197,7 @@ onUnmounted(() => {
   --text-secondary: #4a5568;
   --bg-gradient: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
   --bg-light: rgba(255, 255, 255, 0.95);
+  --background-secondary: rgba(255, 255, 255, 0.85);
   /* 尺寸变量 */
   --spacing-xs: 0.5rem;
   --spacing-sm: 1rem;

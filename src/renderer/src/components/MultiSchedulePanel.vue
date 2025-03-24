@@ -285,23 +285,25 @@ onUnmounted(() => {
 <style scoped>
 .multi-schedule-panel {
     padding: var(--spacing-sm);
-    background: var(--background-secondary);
+    background: rgba(102, 126, 234, 0.12);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-sm);
+    border: 1px solid rgba(102, 126, 234, 0.25);
 }
 
 .time-picker-container {
-    background: white;
+    background: rgba(255, 255, 255, 0.7);
     padding: var(--spacing-sm);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-xs);
     margin-bottom: var(--spacing-sm);
+    border: 1px solid rgba(102, 126, 234, 0.15);
+    backdrop-filter: blur(8px);
 }
 
 .schedules-list {
     background: transparent !important;
     gap: var(--spacing-xs);
-    padding: 2px;
 }
 
 .schedule-item {
@@ -453,10 +455,20 @@ button:disabled {
     justify-content: space-between;
     align-items: center;
     padding: var(--spacing-xs) var(--spacing-sm);
-    background-color: white;
+    background-color: rgba(255, 255, 255, 0.7);
     border-radius: var(--radius-sm);
     box-shadow: var(--shadow-xs);
     margin-bottom: var(--spacing-xs);
+    border: 1px solid rgba(102, 126, 234, 0.15);
+    backdrop-filter: blur(4px);
+    transition: all 0.2s ease;
+}
+
+.schedule-item:hover {
+    background-color: rgba(255, 255, 255, 0.85);
+    border-color: rgba(102, 126, 234, 0.3);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
 }
 
 .schedule-item:last-child {
@@ -496,12 +508,13 @@ button:disabled {
 
 :deep(.el-input__wrapper) {
     background-color: rgba(255, 255, 255, 0.5) !important;
-    border: 2px solid transparent !important;
-    box-shadow: var(--shadow-sm) !important;
+    border: 1px solid rgba(102, 126, 234, 0.2) !important;
+    box-shadow: var(--shadow-xs) !important;
     transition: var(--transition-normal);
     border-radius: var(--radius-md);
     height: 48px;
     padding: 0 var(--spacing-md);
+    backdrop-filter: blur(4px);
 }
 
 :deep(.el-time-picker) {
@@ -551,16 +564,17 @@ button:disabled {
 }
 
 :deep(.el-input__wrapper:hover) {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md) !important;
-    background-color: rgba(255, 255, 255, 0.8) !important;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm) !important;
+    background-color: rgba(255, 255, 255, 0.75) !important;
+    border-color: rgba(102, 126, 234, 0.3) !important;
 }
 
 :deep(.el-input__wrapper.is-focus) {
     border-color: var(--primary) !important;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2) !important;
-    transform: translateY(-2px);
-    background-color: rgba(255, 255, 255, 0.8) !important;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.15) !important;
+    transform: translateY(-1px);
+    background-color: rgba(255, 255, 255, 0.85) !important;
 }
 
 :deep(.el-input__wrapper.is-disabled) {
