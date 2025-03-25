@@ -6,27 +6,33 @@ export function useTimer(options = { isScheduleMode: false }) {
   const timeValue = ref(null)
   
   let timer = null
+  let endTime = null
   
   const startTimer = (duration) => {
     if (isRunning.value) return
     
     isRunning.value = true
     countdown.value = duration
+    endTime = Date.now() + duration * 1000
     
-    const startTime = Date.now()
-    timer = setInterval(() => {
-      const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000)
-      countdown.value = duration - elapsedSeconds
+    const updateCountdown = () => {
+      const now = Date.now()
+      const remaining = Math.max(0, Math.ceil((endTime - now) / 1000))
+      countdown.value = remaining
       
-      if (countdown.value <= 0) {
+      if (remaining <= 0) {
         stopTimer()
+      } else {
+        requestAnimationFrame(updateCountdown)
       }
-    }, 100) // 更新频率提高到100ms，使显示更平滑
+    }
+    
+    updateCountdown()
   }
   
   const stopTimer = () => {
     if (timer) {
-      clearInterval(timer)
+      cancelAnimationFrame(timer)
       timer = null
     }
     isRunning.value = false

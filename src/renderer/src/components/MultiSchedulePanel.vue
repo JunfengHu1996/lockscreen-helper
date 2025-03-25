@@ -88,6 +88,7 @@ const loadSavedSchedules = () => {
 // 处理schedules变化
 const handleSchedulesChange = (schedules, isInitialLoad = false) => {
   const now = new Date();
+  now.setMilliseconds(0); // 忽略毫秒，确保时间比较的精确性
   
   // 过滤出有效的定时任务：
   // 1. 每天执行的任务
@@ -109,21 +110,26 @@ const handleSchedulesChange = (schedules, isInitialLoad = false) => {
 
     if (s.isDaily) {
       // 对于每日任务，如果今天的时间已经过了，就设置为明天
-      const now = new Date();
       targetTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 
         scheduleTime.getHours(), scheduleTime.getMinutes(), 0, 0);
       
+      // 如果目标时间小于等于当前时间，设置为明天
       if (targetTime <= now) {
         targetTime.setDate(targetTime.getDate() + 1);
       }
     } else {
-      // 对于单次任务，直接使用设定的时间
-      targetTime = scheduleTime;
+      // 对于单次任务，设置精确时间（忽略毫秒）
+      targetTime = new Date(scheduleTime);
+      targetTime.setSeconds(0);
+      targetTime.setMilliseconds(0);
     }
 
+    // 计算精确的延迟时间（毫秒）
+    const delay = targetTime.getTime() - now.getTime();
+    
     return {
       ...s,
-      time: targetTime.getTime() - now.getTime(), // 计算延迟时间
+      time: delay > 0 ? delay : 0, // 确保延迟时间不为负
       scheduledTime: targetTime.toISOString()
     };
   });
@@ -169,12 +175,17 @@ const addSchedule = () => {
         return
     }
 
+    const now = new Date();
+    now.setSeconds(0);
+    now.setMilliseconds(0);
+    
+    const selectedTime = new Date(newTimeValue.value);
+    selectedTime.setFullYear(now.getFullYear(), now.getMonth(), now.getDate());
+    selectedTime.setSeconds(0);
+    selectedTime.setMilliseconds(0);
+    
     // 检查是否选择了过去的时间（仅对非每日任务进行检查）
     if (!isDaily.value) {
-        const now = new Date();
-        const selectedTime = new Date(newTimeValue.value);
-        selectedTime.setFullYear(now.getFullYear(), now.getMonth(), now.getDate());
-        
         if (selectedTime <= now) {
             saveMessage.value = { type: 'error', text: '请选择未来的时间' }
             setTimeout(() => {
@@ -182,14 +193,8 @@ const addSchedule = () => {
             }, 3000)
             return
         }
-    }
-
-    const now = new Date();
-    const selectedTime = new Date(newTimeValue.value);
-    selectedTime.setFullYear(now.getFullYear(), now.getMonth(), now.getDate());
-    
-    if (!isDaily.value && selectedTime <= now) {
-        // 如果不是每日执行且选择的时间小于或等于当前时间，将其设置为明天的同一时间
+    } else if (selectedTime <= now) {
+        // 如果是每日任务且时间已过，设置为明天
         selectedTime.setDate(selectedTime.getDate() + 1);
     }
     

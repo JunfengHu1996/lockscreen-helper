@@ -108,15 +108,15 @@ function createWindow() {
   
   // 创建浏览器窗口
   mainWindowRef = new BrowserWindow({
-    width: 500,
-    height: Math.floor(height * 0.9), // 设置为屏幕高度的90%
+    width: 600,
+    height: 1000, // 设置为屏幕高度的90%，但不超过900像素
     show: false,
     autoHideMenuBar: true,
     resizable: true, // 允许调整窗口大小
     minWidth: 600, // 最小宽度
-    minHeight: 600, // 最小高度
+    minHeight: 1000, // 增加最小高度以确保内容完全显示
     maxWidth: 800, // 最大宽度
-    maxHeight: height, // 最大高度为屏幕高度的95%
+    maxHeight: height, // 最大高度为屏幕高度
     center: true,
     title: '锁屏小助手',
     icon: icon,
@@ -257,23 +257,27 @@ let lockTimerIds = new Map([
       }
     }
     
-    // 记录开始时间，用于确保精确计时
-    const startTime = Date.now();
-    const targetTime = startTime + (lockTime * 1000);
+    // 计算目标时间（精确到毫秒）
+    const targetTime = Date.now() + (lockTime * 1000);
     
-    // 设置模式对应的新定时器
-    const timerId = setTimeout(() => {
-      console.log(`执行锁屏，计划时间：${lockTime}秒，实际延迟：${(Date.now() - startTime) / 1000}秒`);
-      lockScreen(event);
-      // 定时器执行后从Map中移除
-      lockTimerIds.get('single').delete(event.sender.id);
-    }, lockTime * 1000);
+    const scheduleNextTick = () => {
+      const now = Date.now();
+      if (now >= targetTime) {
+        console.log(`执行锁屏，计划时间：${lockTime}秒，实际延迟：${(now - (targetTime - lockTime * 1000)) / 1000}秒`);
+        lockScreen(event);
+        lockTimerIds.get('single').delete(event.sender.id);
+      } else {
+        const remainingTime = targetTime - now;
+        const nextTickTime = Math.min(remainingTime, 100); // 每100ms检查一次
+        const timerId = setTimeout(scheduleNextTick, nextTickTime);
+        lockTimerIds.get('single').set(event.sender.id, {
+          id: timerId,
+          targetTime: targetTime
+        });
+      }
+    };
     
-    // 存储定时器ID和目标时间
-    lockTimerIds.get('single').set(event.sender.id, {
-      id: timerId,
-      targetTime: targetTime
-    });
+    scheduleNextTick();
   });
   
   // 监听取消锁屏计时事件
@@ -381,78 +385,86 @@ let lockTimerIds = new Map([
 
       // 设置模式对应的新定时器
       const newTimers = await Promise.all(validSchedules.map(async schedule => {
-        const delayInSeconds = Math.floor(schedule.time/1000);
-        console.log(`设置定时器，将在 ${delayInSeconds} 秒后锁定屏幕`);
+        const targetTime = Date.now() + schedule.time;
+        console.log(`设置定时器，将在 ${new Date(targetTime).toLocaleString()} 锁定屏幕`);
         
-        const timeoutId = setTimeout(() => {
-          console.log(`执行定时锁屏，原计划时间：${delayInSeconds}秒`);
-          lockScreen(event);
-          
-          // 定时器执行后，从数组中移除该定时器
-          const timerArray = lockTimerIds.get(mode).get(event.sender.id);
-          if (Array.isArray(timerArray)) {
-            const index = timerArray.findIndex(t => t.id === schedule.id);
-            if (index > -1) {
-              timerArray.splice(index, 1);
-              
-              // 更新存储的任务列表
-              const savedSchedules = store.get('multiSchedules', []);
-              // 只删除非每日执行的任务
-              const targetSchedule = savedSchedules.find(s => s.id === schedule.id);
-              if (targetSchedule && !targetSchedule.isDaily) {
-                // 过滤掉已执行的单次任务和过期的单次任务
-                const now = new Date();
-                const updatedSchedules = savedSchedules.filter(s => {
-                  if (s.id === schedule.id) return false; // 移除已执行的任务
-                  if (!s.isDaily) {
-                    // 对于其他单次任务，检查是否过期
-                    const scheduleTime = new Date(s.scheduledTime);
-                    return scheduleTime > now;
-                  }
-                  return true; // 保留所有每日任务
-                });
+        const scheduleNextTick = () => {
+          const now = Date.now();
+          if (now >= targetTime) {
+            console.log(`执行定时锁屏，计划时间：${new Date(targetTime).toLocaleString()}，实际时间：${new Date().toLocaleString()}`);
+            lockScreen(event);
+            
+            // 定时器执行后，从数组中移除该定时器
+            const timerArray = lockTimerIds.get(mode).get(event.sender.id);
+            if (Array.isArray(timerArray)) {
+              const index = timerArray.findIndex(t => t.id === schedule.id);
+              if (index > -1) {
+                timerArray.splice(index, 1);
                 
-                store.set('multiSchedules', updatedSchedules);
-                
-                // 通知渲染进程更新 UI
-                event.reply('schedule-executed', { 
-                  scheduleId: schedule.id,
-                  updatedSchedules: updatedSchedules,
-                  isDaily: false
-                });
-              } else if (targetSchedule && targetSchedule.isDaily) {
-                // 对于每日任务，更新下次执行时间
-                const scheduledTime = new Date(targetSchedule.scheduledTime);
-                const tomorrow = new Date();
-                tomorrow.setDate(tomorrow.getDate() + 1);
-                tomorrow.setHours(scheduledTime.getHours());
-                tomorrow.setMinutes(scheduledTime.getMinutes());
-                tomorrow.setSeconds(0);
-                tomorrow.setMilliseconds(0);
-                
-                const updatedSchedules = savedSchedules.map(s => 
-                  s.id === schedule.id 
-                    ? { ...s, scheduledTime: tomorrow.toISOString() }
-                    : s
-                );
-                store.set('multiSchedules', updatedSchedules);
-                
-                // 通知渲染进程更新 UI，但不删除任务
-                event.reply('schedule-executed', { 
-                  scheduleId: schedule.id,
-                  updatedSchedules: updatedSchedules,
-                  isDaily: true
-                });
+                // 更新存储的任务列表
+                const savedSchedules = store.get('multiSchedules', []);
+                // 只删除非每日执行的任务
+                const targetSchedule = savedSchedules.find(s => s.id === schedule.id);
+                if (targetSchedule && !targetSchedule.isDaily) {
+                  // 过滤掉已执行的单次任务和过期的单次任务
+                  const now = new Date();
+                  const updatedSchedules = savedSchedules.filter(s => {
+                    if (s.id === schedule.id) return false; // 移除已执行的任务
+                    if (!s.isDaily) {
+                      // 对于其他单次任务，检查是否过期
+                      const scheduleTime = new Date(s.scheduledTime);
+                      return scheduleTime > now;
+                    }
+                    return true; // 保留所有每日任务
+                  });
+                  
+                  store.set('multiSchedules', updatedSchedules);
+                  
+                  // 通知渲染进程更新 UI
+                  event.reply('schedule-executed', { 
+                    scheduleId: schedule.id,
+                    updatedSchedules: updatedSchedules,
+                    isDaily: false
+                  });
+                } else if (targetSchedule && targetSchedule.isDaily) {
+                  // 对于每日任务，更新下次执行时间
+                  const scheduledTime = new Date(targetSchedule.scheduledTime);
+                  const tomorrow = new Date();
+                  tomorrow.setDate(tomorrow.getDate() + 1);
+                  tomorrow.setHours(scheduledTime.getHours());
+                  tomorrow.setMinutes(scheduledTime.getMinutes());
+                  tomorrow.setSeconds(0);
+                  tomorrow.setMilliseconds(0);
+                  
+                  const updatedSchedules = savedSchedules.map(s => 
+                    s.id === schedule.id 
+                      ? { ...s, scheduledTime: tomorrow.toISOString() }
+                      : s
+                  );
+                  store.set('multiSchedules', updatedSchedules);
+                  
+                  // 通知渲染进程更新 UI，但不删除任务
+                  event.reply('schedule-executed', { 
+                    scheduleId: schedule.id,
+                    updatedSchedules: updatedSchedules,
+                    isDaily: true
+                  });
+                }
               }
             }
+          } else {
+            const remainingTime = targetTime - now;
+            const nextTickTime = Math.min(remainingTime, 100); // 每100ms检查一次
+            const timeoutId = setTimeout(scheduleNextTick, nextTickTime);
+            return {
+              id: schedule.id,
+              timeoutId: timeoutId,
+              scheduledTime: new Date(targetTime)
+            };
           }
-        }, schedule.time);
-
-        return {
-          id: schedule.id,
-          timeoutId: timeoutId,
-          scheduledTime: new Date(Date.now() + schedule.time)
         };
+        
+        return scheduleNextTick();
       }));
 
       // 存储新的定时器信息到对应模式下
