@@ -6,10 +6,78 @@ import { exec } from 'child_process';
 import { homedir } from 'os';
 // 由于 electron-store 是 ES Module，使用动态导入
 let store;
-(async () => {
-  const { default: Store } = await import('electron-store');
-  store = new Store();
-})();
+const initStore = async () => {
+  try {
+    const { default: Store } = await import('electron-store');
+    store = new Store({
+      clearInvalidConfig: true, // 清除无效的配置
+      migrations: {
+        // 添加迁移以处理可能的损坏数据
+        '>=1.0.0': store => {
+          // 重置可能损坏的数据
+          if (typeof store.get('multiSchedules') !== 'undefined') {
+            try {
+              const schedules = store.get('multiSchedules');
+              if (!Array.isArray(schedules)) {
+                store.set('multiSchedules', []);
+              }
+            } catch (e) {
+              store.set('multiSchedules', []);
+            }
+          }
+          
+          if (typeof store.get('lastLockTime') !== 'undefined') {
+            try {
+              const lastTime = store.get('lastLockTime');
+              if (typeof lastTime !== 'string') {
+                store.set('lastLockTime', null);
+              }
+            } catch (e) {
+              store.set('lastLockTime', null);
+            }
+          }
+        }
+      }
+    });
+    console.log('electron-store 初始化成功');
+    return store;
+  } catch (error) {
+    console.error('初始化 electron-store 时出错:', error);
+    
+    // 尝试删除可能已损坏的配置文件
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const { homedir } = require('os');
+      const configPath = path.join(homedir(), '.screen-lock-assistant', 'config.json');
+      
+      if (fs.existsSync(configPath)) {
+        console.log('尝试删除可能损坏的配置文件:', configPath);
+        fs.unlinkSync(configPath);
+        
+        // 重新尝试初始化
+        const { default: Store } = await import('electron-store');
+        store = new Store();
+        console.log('重新初始化 electron-store 成功');
+        return store;
+      }
+    } catch (fsError) {
+      console.error('尝试删除配置文件失败:', fsError);
+    }
+    
+    // 如果所有尝试都失败，返回一个内存中的模拟存储
+    return {
+      get: (key, defaultValue) => defaultValue,
+      set: () => {},
+      has: () => false,
+      delete: () => {},
+      clear: () => {}
+    };
+  }
+};
+
+// 初始化存储
+initStore().catch(err => console.error('初始化存储失败:', err));
 
 // 确保应用程序只有一个实例
 const gotTheLock = app.requestSingleInstanceLock();
@@ -159,10 +227,15 @@ let lockTimerIds = new Map([
         console.log('屏幕已锁定');
         
         // 保存锁屏时间
-        const lockTime = new Date().toISOString();
-        if (store) {
+      const lockTime = new Date().toISOString();
+      if (store) {
+        try {
           store.set('lastLockTime', lockTime);
+        } catch (storeError) {
+          console.error('保存锁屏时间时出错:', storeError);
+          // 继续执行，即使保存失败
         }
+      }
         
         event.reply('lock-execution-result', { success: true });
       });
@@ -231,40 +304,55 @@ let lockTimerIds = new Map([
 
   // 处理获取保存的定时设置的请求
   ipcMain.handle('get-saved-schedules', async () => {
-    // 确保 store 已经初始化
-    if (!store) {
-      const { default: Store } = await import('electron-store');
-      store = new Store();
+    try {
+      // 确保 store 已经初始化
+      if (!store) {
+        store = await initStore();
+      }
+      return store.get('multiSchedules', []);
+    } catch (error) {
+      console.error('获取保存的定时设置时出错:', error);
+      return [];
     }
-    return store.get('multiSchedules', []);
   });
   
   // 处理获取最后锁屏时间的请求
   ipcMain.on('get-last-lock-time', async (event) => {
-    // 确保 store 已经初始化
-    if (!store) {
-      const { default: Store } = await import('electron-store');
-      store = new Store();
+    try {
+      // 确保 store 已经初始化
+      if (!store) {
+        store = await initStore();
+      }
+      const lastLockTime = store.get('lastLockTime', null);
+      event.reply('last-lock-time', lastLockTime);
+    } catch (error) {
+      console.error('获取最后锁屏时间时出错:', error);
+      event.reply('last-lock-time', null);
     }
-    const lastLockTime = store.get('lastLockTime', null);
-    event.reply('last-lock-time', lastLockTime);
   });
 
   // 监听多次定时设置事件
   ipcMain.on('set-multi-schedules', async (event, { schedules, mode, isDelete, isSilent }) => {
-    // 确保 store 已经初始化
-    if (!store) {
-      const { default: Store } = await import('electron-store');
-      store = new Store();
-    }
-    // 保存定时设置到 electron-store
-    store.set('multiSchedules', schedules);
-    if (!Array.isArray(schedules)) {
-        return;
-    }
-    console.log('接收到多次定时设置:', schedules);
-
     try {
+      // 确保 store 已经初始化
+      if (!store) {
+        store = await initStore();
+      }
+
+      // 检查schedules是否为数组
+      if (!Array.isArray(schedules)) {
+        throw new Error('定时设置必须是数组格式');
+      }
+
+      try {
+        // 保存定时设置到 electron-store
+        await store.set('multiSchedules', schedules);
+        console.log('接收到多次定时设置:', schedules);
+      } catch (storeError) {
+        console.error('保存定时设置到 store 时出错:', storeError);
+        // 如果保存失败，继续执行但不依赖存储
+      }
+
       // 验证并过滤定时设置，只接受正数时间
       const validSchedules = schedules.filter(schedule => {
         return Number.isFinite(schedule.time) && schedule.time > 0;
@@ -292,7 +380,7 @@ let lockTimerIds = new Map([
       }
 
       // 设置模式对应的新定时器
-      const newTimers = validSchedules.map(schedule => {
+      const newTimers = await Promise.all(validSchedules.map(async schedule => {
         const delayInSeconds = Math.floor(schedule.time/1000);
         console.log(`设置定时器，将在 ${delayInSeconds} 秒后锁定屏幕`);
         
@@ -365,7 +453,7 @@ let lockTimerIds = new Map([
           timeoutId: timeoutId,
           scheduledTime: new Date(Date.now() + schedule.time)
         };
-      });
+      }));
 
       // 存储新的定时器信息到对应模式下
       if (!lockTimerIds.get(mode)) {
@@ -439,18 +527,27 @@ app.on('before-quit', () => {
 
   // 从 electron-store 加载定时设置
   setTimeout(async () => {
-    // 确保 store 已经初始化
-    if (!store) {
-      const { default: Store } = await import('electron-store');
-      store = new Store();
+    try {
+      // 确保 store 已经初始化
+      if (!store) {
+        store = await initStore();
+      }
+      
+      const savedSchedules = store.get('multiSchedules', []);
+      if (Array.isArray(savedSchedules) && savedSchedules.length > 0) {
+        console.log('从存储中加载定时设置:', savedSchedules);
+        // 确保有可用的窗口
+        const windows = BrowserWindow.getAllWindows();
+        if (windows.length > 0) {
+          windows[0].webContents.send('load-saved-schedules', savedSchedules);
+        }
+      } else {
+        console.log('没有找到保存的定时设置或格式不正确');
+      }
+    } catch (error) {
+      console.error('加载保存的定时设置时出错:', error);
     }
-    const savedSchedules = store.get('multiSchedules');
-    if (savedSchedules) {
-      console.log('从存储中加载定时设置:', savedSchedules);
-      // 这里可以发送一个事件到渲染进程，通知它加载保存的定时设置
-      BrowserWindow.getAllWindows()[0].webContents.send('load-saved-schedules', savedSchedules);
-    }
-  }, 1000); // 给予足够的时间让 store 初始化
+  }, 1500); // 给予足够的时间让 store 初始化
 
   app.on('activate', function () {
     // 在 macOS 上，当点击应用程序的停靠图标且没有其他窗口打开时，通常会重新创建一个窗口
