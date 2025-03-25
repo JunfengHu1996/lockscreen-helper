@@ -32,6 +32,9 @@
             :message="lockResult.message || (lockResult.success ? '屏幕已锁定' : '锁屏失败')"
           />
         </div>
+        
+        <!-- 添加最近锁屏时间组件 -->
+        <last-lock-time />
       </div>
     </main>
   </div>
@@ -48,6 +51,7 @@ import ModeTabs from './components/ModeTabs.vue'
 import CountdownPanel from './components/CountdownPanel.vue'
 import SchedulePanel from './components/SchedulePanel.vue'
 import ResultMessage from './components/ResultMessage.vue'
+import LastLockTime from './components/LastLockTime.vue'
 
   // ============ 状态定义 ============
 const title = ref('倒计时锁屏')

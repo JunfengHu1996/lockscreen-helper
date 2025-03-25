@@ -157,6 +157,13 @@ let lockTimerIds = new Map([
           return;
         }
         console.log('屏幕已锁定');
+        
+        // 保存锁屏时间
+        const lockTime = new Date().toISOString();
+        if (store) {
+          store.set('lastLockTime', lockTime);
+        }
+        
         event.reply('lock-execution-result', { success: true });
       });
     } else {
@@ -231,6 +238,17 @@ let lockTimerIds = new Map([
     }
     return store.get('multiSchedules', []);
   });
+  
+  // 处理获取最后锁屏时间的请求
+  ipcMain.on('get-last-lock-time', async (event) => {
+    // 确保 store 已经初始化
+    if (!store) {
+      const { default: Store } = await import('electron-store');
+      store = new Store();
+    }
+    const lastLockTime = store.get('lastLockTime', null);
+    event.reply('last-lock-time', lastLockTime);
+  });
 
   // 监听多次定时设置事件
   ipcMain.on('set-multi-schedules', async (event, { schedules, mode, isDelete, isSilent }) => {
@@ -258,23 +276,18 @@ let lockTimerIds = new Map([
       }
 
       // 清理当前模式对应的旧定时器
-    if (lockTimerIds.has(mode)) {
-      const oldTimers = lockTimerIds.get(mode).get(event.sender.id);
-      if (Array.isArray(oldTimers)) {
-        oldTimers.forEach(timer => clearTimeout(timer.timeoutId));
-      }
-      lockTimerIds.get(mode).delete(event.sender.id);
-    }
-      if (lockTimerIds.has(event.sender.id)) {
-        const oldTimers = lockTimerIds.get(event.sender.id);
-        if (Array.isArray(oldTimers)) {
-          oldTimers.forEach(timer => {
-            if (timer && timer.timeoutId) {
-              clearTimeout(timer.timeoutId);
-            }
-          });
-        } else if (oldTimers) {
-          clearTimeout(oldTimers);
+      if (lockTimerIds.has(mode)) {
+        const modeTimers = lockTimerIds.get(mode);
+        if (modeTimers.has(event.sender.id)) {
+          const oldTimers = modeTimers.get(event.sender.id);
+          if (Array.isArray(oldTimers)) {
+            oldTimers.forEach(timer => {
+              if (timer && timer.timeoutId) {
+                clearTimeout(timer.timeoutId);
+              }
+            });
+          }
+          modeTimers.delete(event.sender.id);
         }
       }
 
@@ -288,7 +301,7 @@ let lockTimerIds = new Map([
           lockScreen(event);
           
           // 定时器执行后，从数组中移除该定时器
-          const timerArray = lockTimerIds.get(event.sender.id);
+          const timerArray = lockTimerIds.get(mode).get(event.sender.id);
           if (Array.isArray(timerArray)) {
             const index = timerArray.findIndex(t => t.id === schedule.id);
             if (index > -1) {
@@ -299,13 +312,25 @@ let lockTimerIds = new Map([
               // 只删除非每日执行的任务
               const targetSchedule = savedSchedules.find(s => s.id === schedule.id);
               if (targetSchedule && !targetSchedule.isDaily) {
-                const updatedSchedules = savedSchedules.filter(s => s.id !== schedule.id);
+                // 过滤掉已执行的单次任务和过期的单次任务
+                const now = new Date();
+                const updatedSchedules = savedSchedules.filter(s => {
+                  if (s.id === schedule.id) return false; // 移除已执行的任务
+                  if (!s.isDaily) {
+                    // 对于其他单次任务，检查是否过期
+                    const scheduleTime = new Date(s.scheduledTime);
+                    return scheduleTime > now;
+                  }
+                  return true; // 保留所有每日任务
+                });
+                
                 store.set('multiSchedules', updatedSchedules);
                 
                 // 通知渲染进程更新 UI
                 event.reply('schedule-executed', { 
                   scheduleId: schedule.id,
-                  updatedSchedules: updatedSchedules
+                  updatedSchedules: updatedSchedules,
+                  isDaily: false
                 });
               } else if (targetSchedule && targetSchedule.isDaily) {
                 // 对于每日任务，更新下次执行时间
@@ -342,21 +367,36 @@ let lockTimerIds = new Map([
         };
       });
 
-      // 存储新的定时器信息
-      lockTimerIds.set(event.sender.id, newTimers);
+      // 存储新的定时器信息到对应模式下
+      if (!lockTimerIds.get(mode)) {
+        lockTimerIds.set(mode, new Map());
+      }
+      lockTimerIds.get(mode).set(event.sender.id, newTimers);
 
-      // 只在非删除且非静默操作时发送成功响应
-      if (!isDelete && !isSilent) {
-        const message = validSchedules.length === 1 
-          ? '已设置1个定时锁屏任务' 
-          : `已设置 ${validSchedules.length} 个定时锁屏任务`;
-        
-        console.log(message);
-        event.reply('multi-schedule-result', { 
-          success: true, 
-          message: message,
-          fromMultiSchedule: true
-        });
+      // 根据操作类型发送适当的响应
+      if (!isSilent) {
+        let message;
+        if (isDelete) {
+          message = '已删除定时锁屏任务';
+          console.log(message);
+          event.reply('multi-schedule-result', { 
+            success: true, 
+            message: message,
+            fromMultiSchedule: true,
+            isDelete: true
+          });
+        } else {
+          message = validSchedules.length === 1 
+            ? '已设置1个定时锁屏任务' 
+            : `已设置 ${validSchedules.length} 个定时锁屏任务`;
+          
+          console.log(message);
+          event.reply('multi-schedule-result', { 
+            success: true, 
+            message: message,
+            fromMultiSchedule: true
+          });
+        }
       }
 
     } catch (error) {
@@ -381,24 +421,14 @@ app.on('before-quit', () => {
   }
   
   // 清理所有定时器
-  for (const [_, timers] of lockTimerIds) {
-    if (Array.isArray(timers)) {
-      timers.forEach(timer => {
-        if (timer && timer.timeoutId) {
-          clearTimeout(timer.timeoutId);
-        } else if (timer && timer.id) {
-          clearTimeout(timer.id);
-        } else if (timer) {
-          clearTimeout(timer);
-        }
-      });
-    } else if (timers) {
-      // 处理新格式的计时器对象
-      if (typeof timers === 'object' && timers.id) {
-        clearTimeout(timers.id);
-      } else {
-        // 兼容旧格式
-        clearTimeout(timers);
+  for (const [_, modeTimers] of lockTimerIds) {
+    for (const [__, timers] of modeTimers) {
+      if (Array.isArray(timers)) {
+        timers.forEach(timer => {
+          if (timer && timer.timeoutId) {
+            clearTimeout(timer.timeoutId);
+          }
+        });
       }
     }
   }

@@ -63,16 +63,24 @@ const sortedSchedules = computed(() => {
 const loadSavedSchedules = () => {
   window.api.getSavedSchedules().then((savedSchedules) => {
     if (savedSchedules && Array.isArray(savedSchedules)) {
+      const now = new Date();
       // 过滤过期单次任务
-const now = new Date();
-schedules.value = savedSchedules
-  .map(schedule => ({
-    ...schedule,
-    time: new Date(schedule.scheduledTime)
-  }))
-  .filter(s => s.isDaily || s.time > now);
-      // 传入true表示这是初始加载
-      handleSchedulesChange(schedules.value, true);
+      const validSchedules = savedSchedules
+        .map(schedule => ({
+          ...schedule,
+          time: new Date(schedule.scheduledTime)
+        }))
+        .filter(s => {
+          if (s.isDaily) return true;
+          return s.time > now;
+        });
+
+      schedules.value = validSchedules;
+      
+      // 如果有任务被过滤掉（过期的单次任务），更新存储
+      if (validSchedules.length < savedSchedules.length) {
+        handleSchedulesChange(validSchedules, true);
+      }
     }
   });
 };
@@ -80,11 +88,20 @@ schedules.value = savedSchedules
 // 处理schedules变化
 const handleSchedulesChange = (schedules, isInitialLoad = false) => {
   const now = new Date();
-  // 过滤出有效的定时任务：每天执行的任务或未来时间的任务
-  const validSchedules = schedules.filter(s => {
+  
+  // 过滤出有效的定时任务：
+  // 1. 每天执行的任务
+  // 2. 未来时间的单次任务
+  const validSchedules = Array.isArray(schedules) ? schedules : schedules.value;
+  const filteredSchedules = validSchedules.filter(s => {
     if (s.isDaily) return true;
     return s.time > now;
   });
+
+  // 更新本地状态
+  if (filteredSchedules.length < validSchedules.length) {
+    schedules.value = filteredSchedules;
+  }
 
   const schedulesToSend = validSchedules.map(s => ({
     ...s,
@@ -94,8 +111,8 @@ const handleSchedulesChange = (schedules, isInitialLoad = false) => {
 
   // 添加一个标记，表示这是删除操作
   const isModeSwitch = window.isSwitchingMode;
-const isDelete = window.lastSchedulesLength > schedules.length;
-  window.lastSchedulesLength = schedules.length;
+  const isDelete = window.lastSchedulesLength > schedules.length;
+  window.lastSchedulesLength = validSchedules.length; // 使用过滤后的长度
 
   // 如果有有效的定时任务，或者这是一个删除操作，才发送更新
   if (validSchedules.length > 0 || isDelete) {
@@ -103,7 +120,7 @@ const isDelete = window.lastSchedulesLength > schedules.length;
       schedules: schedulesToSend,
       mode: MODES.SCHEDULE,
       isDelete, // 传递删除标记
-      isSilent: isInitialLoad || isModeSwitch // 静默模式包含初始加载和模式切换
+      isSilent: true // 总是使用静默模式，避免重复显示消息
     });
   }
 };
@@ -168,7 +185,7 @@ const addSchedule = () => {
     newTimeValue.value = null
 
     // 显示添加成功消息
-    saveMessage.value = { type: 'success', text: '添加成功' }
+    saveMessage.value = { type: 'success', text: `已添加1个定时任务` }
     setTimeout(() => {
         saveMessage.value = null
     }, 3000)
@@ -180,10 +197,30 @@ const isFutureTime = (date) => {
 }
 
 const removeSchedule = (id) => {
-    console.log('Removing schedule with id:', id)
-    console.log('Before removal, schedules:', JSON.stringify(schedules.value))
-    schedules.value = schedules.value.filter(schedule => schedule.id !== id)
-    console.log('After removal, schedules:', JSON.stringify(schedules.value))
+    console.log('Removing schedule with id:', id);
+    console.log('Before removal, schedules:', JSON.stringify(schedules.value));
+    
+    // 过滤掉要删除的任务
+    const updatedSchedules = schedules.value.filter(schedule => schedule.id !== id);
+    schedules.value = updatedSchedules;
+    
+    console.log('After removal, schedules:', JSON.stringify(schedules.value));
+    
+    // 立即触发更新到主进程
+    const now = new Date();
+    const schedulesToSend = updatedSchedules.map(s => ({
+        ...s,
+        time: s.time.getTime() - now.getTime(),
+        scheduledTime: s.time.toISOString()
+    }));
+
+    // 发送更新到主进程，并标记这是一个删除操作
+    window.api.send('set-multi-schedules', {
+        schedules: schedulesToSend,
+        mode: MODES.SCHEDULE,
+        isDelete: true,
+        isSilent: false
+    });
 }
 
 const formatTime = (schedule) => {
@@ -206,24 +243,24 @@ const handleLockScreenResult = (result) => {
     console.log('MultiSchedulePanel received lock-screen-result:', result);
     isSaving.value = false;
     
-    // 只处理多次定时设置相关的消息
     if (result.fromMultiSchedule) {
-        if (result.success) {
-            saveMessage.value = { 
-                type: 'success', 
-                text: result.message || '定时设置已保存' 
-            }
-        } else {
+        if (!result.success) {
+            // 处理错误消息
             saveMessage.value = { 
                 type: 'error', 
-                text: result.error || '设置失败' 
-            }
+                text: result.error || '操作失败' 
+            };
+        } else if (result.isDelete) {
+            // 处理删除成功消息
+            saveMessage.value = { 
+                type: 'success', 
+                text: result.message || '删除成功' 
+            };
         }
-
         // 3秒后清除消息
         setTimeout(() => {
-            saveMessage.value = null
-        }, 3000)
+            saveMessage.value = null;
+        }, 3000);
     }
 }
 
@@ -255,22 +292,45 @@ const handleLockExecutionResult = (result) => {
 // 处理定时任务执行完成的事件
 const handleScheduleExecuted = (result) => {
     console.log('Schedule executed:', result);
+    
+    // 如果有更新后的任务列表
     if (result.updatedSchedules) {
-        schedules.value = result.updatedSchedules.map(schedule => ({
-            ...schedule,
-            time: new Date(schedule.scheduledTime)
-        }));
+        // 立即更新本地任务列表，确保时间格式正确
+        const now = new Date();
+        const updatedSchedules = result.updatedSchedules
+            .map(schedule => ({
+                ...schedule,
+                time: new Date(schedule.scheduledTime)
+            }))
+            .filter(s => s.isDaily || s.time > now); // 再次过滤确保移除过期任务
+
+        schedules.value = updatedSchedules;
         
-        // 如果是每日任务执行完成，显示提示消息
+        // 根据任务类型显示不同的提示消息
         if (result.isDaily) {
             saveMessage.value = { 
                 type: 'success', 
                 text: '每日任务已执行，将在明天继续' 
             };
+        } else {
+            // 确认任务已被移除
+            if (!updatedSchedules.find(s => s.id === result.scheduleId)) {
+                saveMessage.value = { 
+                    type: 'success', 
+                    text: '单次任务已执行完成并移除' 
+                };
+            }
+        }
+        
+        // 3秒后清除消息
+        if (saveMessage.value) {
             setTimeout(() => {
                 saveMessage.value = null;
             }, 3000);
         }
+
+        // 触发变化处理以确保数据同步
+        handleSchedulesChange(updatedSchedules);
     }
 };
 
