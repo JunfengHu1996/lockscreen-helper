@@ -109,7 +109,7 @@ function createWindow() {
   // 创建浏览器窗口
   mainWindowRef = new BrowserWindow({
     width: 600,
-    height: 1000, // 设置为屏幕高度的90%，但不超过900像素
+    height: 1000, 
     show: false,
     autoHideMenuBar: true,
     resizable: true, // 允许调整窗口大小
