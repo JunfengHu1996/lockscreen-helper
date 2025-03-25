@@ -103,11 +103,30 @@ const handleSchedulesChange = (schedules, isInitialLoad = false) => {
     schedules.value = filteredSchedules;
   }
 
-  const schedulesToSend = validSchedules.map(s => ({
-    ...s,
-    time: s.time.getTime() - now.getTime(),
-    scheduledTime: s.time.toISOString()
-  }));
+  const schedulesToSend = validSchedules.map(s => {
+    const scheduleTime = new Date(s.time);
+    let targetTime;
+
+    if (s.isDaily) {
+      // 对于每日任务，如果今天的时间已经过了，就设置为明天
+      const now = new Date();
+      targetTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 
+        scheduleTime.getHours(), scheduleTime.getMinutes(), 0, 0);
+      
+      if (targetTime <= now) {
+        targetTime.setDate(targetTime.getDate() + 1);
+      }
+    } else {
+      // 对于单次任务，直接使用设定的时间
+      targetTime = scheduleTime;
+    }
+
+    return {
+      ...s,
+      time: targetTime.getTime() - now.getTime(), // 计算延迟时间
+      scheduledTime: targetTime.toISOString()
+    };
+  });
 
   // 添加一个标记，表示这是删除操作
   const isModeSwitch = window.isSwitchingMode;
@@ -208,11 +227,29 @@ const removeSchedule = (id) => {
     
     // 立即触发更新到主进程
     const now = new Date();
-    const schedulesToSend = updatedSchedules.map(s => ({
-        ...s,
-        time: s.time.getTime() - now.getTime(),
-        scheduledTime: s.time.toISOString()
-    }));
+    const schedulesToSend = updatedSchedules.map(s => {
+        const scheduleTime = new Date(s.time);
+        let targetTime;
+
+        if (s.isDaily) {
+            // 对于每日任务，如果今天的时间已经过了，就设置为明天
+            targetTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 
+                scheduleTime.getHours(), scheduleTime.getMinutes(), 0, 0);
+            
+            if (targetTime <= now) {
+                targetTime.setDate(targetTime.getDate() + 1);
+            }
+        } else {
+            // 对于单次任务，直接使用设定的时间
+            targetTime = scheduleTime;
+        }
+
+        return {
+            ...s,
+            time: targetTime.getTime() - now.getTime(), // 计算延迟时间（毫秒）
+            scheduledTime: targetTime.toISOString()
+        };
+    });
 
     // 发送更新到主进程，并标记这是一个删除操作
     window.api.send('set-multi-schedules', {
