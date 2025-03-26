@@ -24,16 +24,7 @@ const formattedTime = ref('')
 const formatTime = (timestamp) => {
   if (!timestamp) return ''
   const time = dayjs(timestamp)
-  const now = dayjs()
-  const diffDays = now.diff(time, 'day')
-  
-  if (diffDays === 0) {
-    return `今天 ${time.format('HH:mm:ss')}`
-  } else if (diffDays === 1) {
-    return `昨天 ${time.format('HH:mm:ss')}`
-  } else {
-    return time.format('YYYY-MM-DD HH:mm:ss')
-  }
+  return time.format('YYYY-MM-DD HH:mm:ss')
 }
 
 // 监听锁屏结果
@@ -61,10 +52,26 @@ const listenLastLockTime = () => {
   })
 }
 
+// 定期更新显示的时间
+const startTimeRefresh = () => {
+  // 每秒更新一次显示的时间
+  const intervalId = setInterval(() => {
+    if (lastLockTime.value) {
+      formattedTime.value = formatTime(lastLockTime.value)
+    }
+  }, 1000)
+
+  // 组件卸载时清理定时器
+  onUnmounted(() => {
+    clearInterval(intervalId)
+  })
+}
+
 onMounted(() => {
   updateLastLockTime()
   listenLastLockTime()
   getLastLockTime()
+  startTimeRefresh()
 })
 </script>
 
