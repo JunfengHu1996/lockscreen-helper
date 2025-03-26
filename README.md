@@ -19,6 +19,9 @@
 ![alt text](image-1.png)
 ![alt text](image-2.png)
 
+### 🚀 exe文件地址
+![alt text](image-3.png)
+
 ## 💖 赞赏
 
 如果您觉得这个小助手对您有帮助，欢迎赞赏支持开发者！
