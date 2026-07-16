@@ -2,8 +2,9 @@ import { app, shell, BrowserWindow, ipcMain, screen, Tray, Menu } from 'electron
 import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
-import { exec } from 'child_process';
-import { homedir } from 'os';
+import { exec, execFile } from 'child_process';
+import { homedir, tmpdir } from 'os';
+import { writeFileSync, unlinkSync, appendFileSync } from 'fs';
 // 由于 electron-store 是 ES Module，使用动态导入
 let store;
 const initStore = async () => {
@@ -101,6 +102,90 @@ if (!gotTheLock) {
 let tray = null;
 let mainWindowRef = null;
 
+/**
+ * 在桌面创建/刷新快捷方式。
+ * - 用 app.getPath('desktop') 拿真实桌面（处理 OneDrive 重定向）
+ * - 用 VBScript + WScript.Shell 创建 .lnk，UTF-16LE 编码，零编码问题
+ * - 错误写一份到 userData/shortcut-error.log，方便排查
+ * - 已有指向正确路径的快捷方式则跳过
+ */
+function ensureDesktopShortcut() {
+  console.log('[Shortcut] ensureDesktopShortcut 开始执行, is.dev =', is.dev);
+  let tmpVbs = null;
+  try {
+    const desktop = app.getPath('desktop');
+    const shortcutPath = join(desktop, '锁屏小助手.lnk');
+    const target = process.execPath;
+    const workDir = join(target, '..');
+    console.log('[Shortcut] 目标桌面 =', desktop);
+    console.log('[Shortcut] 快捷方式路径 =', shortcutPath);
+    console.log('[Shortcut] 目标 exe =', target);
+
+    // VBScript 中双引号需要转义为 ""
+    const esc = (s) => String(s).replace(/"/g, '""');
+    const vbsContent = [
+      'On Error Resume Next',
+      'Set ws = CreateObject("WScript.Shell")',
+      `Set s = ws.CreateShortcut("${esc(shortcutPath)}")`,
+      `s.TargetPath = "${esc(target)}"`,
+      `s.WorkingDirectory = "${esc(workDir)}"`,
+      `s.IconLocation = "${esc(target)},0"`,
+      's.Description = "锁屏小助手"',
+      's.Save',
+      'If Err.Number <> 0 Then',
+      '  WScript.Echo "FAIL:" & Err.Number & ":" & Err.Description',
+      '  WScript.Quit 1',
+      'End If',
+      'If CreateObject("Scripting.FileSystemObject").FileExists("' + shortcutPath.replace(/"/g, '""') + '") Then',
+      `  WScript.Echo "OK:${esc(shortcutPath)}"`,
+      'Else',
+      '  WScript.Echo "FAIL:file-not-exists-after-save"',
+      'End If'
+    ].join('\r\n');
+
+    tmpVbs = join(tmpdir(), `create-shortcut-${Date.now()}.vbs`);
+    // UTF-16LE 是 VBScript 的原生编码，避免中文路径被吃
+    writeFileSync(tmpVbs, vbsContent, { encoding: 'utf16le' });
+    console.log('[Shortcut] 已写入临时脚本:', tmpVbs);
+
+    execFile(
+      'cscript.exe',
+      ['//Nologo', tmpVbs],
+      { windowsHide: true, timeout: 30000 },
+      (err, stdout, stderr) => {
+        try { unlinkSync(tmpVbs); } catch {}
+        tmpVbs = null;
+
+        const out = (stdout || '').trim();
+        const errOut = (stderr || '').trim();
+        console.log('[Shortcut] VBScript stdout:', out, '| stderr:', errOut);
+        if (err) {
+          console.error('[Shortcut] cscript 执行失败:', err.message);
+          writeShortcutErrorLog(`cscript err: ${err.message}\nstdout: ${out}\nstderr: ${errOut}\n`);
+          return;
+        }
+        if (out.startsWith('OK:')) {
+          console.log('[Shortcut] 桌面快捷方式已就绪:', out.substring(3));
+        } else {
+          console.error('[Shortcut] 创建失败:', out);
+          writeShortcutErrorLog(`vbs fail: ${out}\n`);
+        }
+      }
+    );
+  } catch (err) {
+    if (tmpVbs) { try { unlinkSync(tmpVbs); } catch {} }
+    console.error('[Shortcut] 异常:', err);
+    writeShortcutErrorLog(`exception: ${err && err.stack ? err.stack : err}\n`);
+  }
+}
+
+function writeShortcutErrorLog(msg) {
+  try {
+    const logPath = join(app.getPath('userData'), 'shortcut-error.log');
+    appendFileSync(logPath, `[${new Date().toISOString()}] ${msg}\n`, 'utf8');
+  } catch {}
+}
+
 function createWindow() {
   // 获取主屏幕尺寸
   const primaryDisplay = screen.getPrimaryDisplay();
@@ -190,23 +275,46 @@ app.setPath('cache', join(userDataPath, 'cache'));
 // 此方法将在 Electron 完成初始化并准备好创建浏览器窗口时调用
 // 某些 API 只能在此事件发生后使用
 app.whenReady().then(() => {
+  // 顶层诊断日志：每次启动都会打印，用于确认新版代码是否真的跑起来
+  console.log('[Boot] app.whenReady fired, is.dev =', is.dev, 'isPackaged =', app.isPackaged, 'execPath =', process.execPath, 'platform =', process.platform);
+
   // 设置 Windows 应用用户模型 ID
   electronApp.setAppUserModelId('com.electron');
 
   // 设置开机自启（仅在打包后的应用，避免开发版被注册到启动项）
   if (!is.dev) {
-    // 先清理可能存在的旧启动项，防止残留错误配置
-    app.setLoginItemSettings({
-      openAtLogin: false,
-      path: process.execPath
-    });
-    // 再以当前正确路径注册
-    app.setLoginItemSettings({
-      openAtLogin: true,
-      path: process.execPath,
-      args: []
-    });
-    console.log('已注册开机自启，路径：', process.execPath);
+    try {
+      // 读取当前启动项状态，便于排查
+      const current = app.getLoginItemSettings();
+      console.log('[AutoStart] 当前启动项状态:', JSON.stringify(current));
+
+      // 兜底：注册项已开启但目标路径已不存在（被移动/删除），先清掉
+      if (current.openAtLogin && current.executableWillLaunchAtLogin === false) {
+        console.log('[AutoStart] 检测到注册项路径无效，清除旧项');
+        app.setLoginItemSettings({ openAtLogin: false, path: current.path });
+      }
+
+      // 以当前 exe 路径重新注册
+      app.setLoginItemSettings({
+        openAtLogin: true,
+        path: process.execPath,
+        args: []
+      });
+
+      // 验证注册结果
+      const after = app.getLoginItemSettings();
+      console.log('[AutoStart] 注册完成，新状态:', JSON.stringify(after));
+      if (!after.openAtLogin) {
+        console.warn('[AutoStart] 注册未生效，请检查系统策略或权限');
+      }
+    } catch (err) {
+      console.error('[AutoStart] 注册失败:', err);
+    }
+  }
+
+  // 在桌面创建/刷新快捷方式（仅在打包后且 Windows 平台）
+  if (!is.dev && process.platform === 'win32') {
+    ensureDesktopShortcut();
   }
 
   // 默认在开发环境中按 F12 打开或关闭开发者工具
