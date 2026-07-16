@@ -193,6 +193,22 @@ app.whenReady().then(() => {
   // 设置 Windows 应用用户模型 ID
   electronApp.setAppUserModelId('com.electron');
 
+  // 设置开机自启（仅在打包后的应用，避免开发版被注册到启动项）
+  if (!is.dev) {
+    // 先清理可能存在的旧启动项，防止残留错误配置
+    app.setLoginItemSettings({
+      openAtLogin: false,
+      path: process.execPath
+    });
+    // 再以当前正确路径注册
+    app.setLoginItemSettings({
+      openAtLogin: true,
+      path: process.execPath,
+      args: []
+    });
+    console.log('已注册开机自启，路径：', process.execPath);
+  }
+
   // 默认在开发环境中按 F12 打开或关闭开发者工具
   // 在生产环境中忽略 CommandOrControl + R
   // 请参阅 https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
