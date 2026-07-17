@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, screen, Tray, Menu } from 'electron';
+import { app, shell, BrowserWindow, ipcMain, screen, Tray, Menu, powerMonitor } from 'electron';
 import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
@@ -101,6 +101,8 @@ if (!gotTheLock) {
 // 声明全局变量以保存托盘实例和主窗口引用
 let tray = null;
 let mainWindowRef = null;
+// 屏幕锁定状态（由 powerMonitor 事件维护），用于在锁屏状态下跳过锁屏定时器
+let isScreenLocked = false;
 
 /**
  * 在桌面创建/刷新快捷方式。
@@ -281,6 +283,20 @@ app.whenReady().then(() => {
   // 设置 Windows 应用用户模型 ID
   electronApp.setAppUserModelId('com.electron');
 
+  // 监听系统锁屏/解锁事件，维护 isScreenLocked 状态
+  // 用于在已经处于锁屏状态时跳过定时锁屏，避免 lastLockTime 被错误覆盖
+  if (process.platform === 'win32') {
+    powerMonitor.on('lock-screen', () => {
+      isScreenLocked = true;
+      console.log('[PowerMonitor] 系统已锁屏');
+    });
+    powerMonitor.on('unlock-screen', () => {
+      isScreenLocked = false;
+      console.log('[PowerMonitor] 系统已解锁');
+    });
+    console.log('[PowerMonitor] 锁屏事件监听已注册');
+  }
+
   // 设置开机自启（仅在打包后的应用，避免开发版被注册到启动项）
   if (!is.dev) {
     try {
@@ -337,6 +353,16 @@ let lockTimerIds = new Map([
   // 执行锁屏
   const lockScreen = (event) => {
     if (process.platform === 'win32') {
+      // 如果系统已处于锁屏状态，跳过本次锁屏，避免 lastLockTime 被错误覆盖
+      if (isScreenLocked) {
+        console.log('[Lock] 系统已处于锁屏状态，跳过本次锁屏定时器');
+        event.reply('lock-execution-result', {
+          success: true,
+          skipped: true,
+          reason: 'already-locked'
+        });
+        return;
+      }
       exec('rundll32.exe user32.dll,LockWorkStation', (error, stdout, stderr) => {
         if (error) {
           console.error(`执行锁屏命令时出错: ${error.message}`);

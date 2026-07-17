@@ -309,18 +309,24 @@ const handleLockScreenResult = (result) => {
 // 创建一个特定的取消监听器，用于处理锁屏执行结果
 const handleLockExecutionResult = (result) => {
     console.log('MultiSchedulePanel received lock execution result:', result);
-    
+
     // 只处理锁屏执行结果，不处理取消消息
     if (!result.error?.includes('用户已取消锁屏')) {
-        if (result.success) {
-            saveMessage.value = { 
-                type: 'success', 
-                text: '锁屏成功' 
+        if (result.skipped) {
+            // 屏幕已经处于锁屏状态，本次定时器跳过
+            saveMessage.value = {
+                type: 'info',
+                text: result.message || '系统已处于锁屏状态，跳过本次锁屏'
+            }
+        } else if (result.success) {
+            saveMessage.value = {
+                type: 'success',
+                text: '锁屏成功'
             }
         } else {
-            saveMessage.value = { 
-                type: 'error', 
-                text: `锁屏失败: ${result.error || '未知错误'}` 
+            saveMessage.value = {
+                type: 'error',
+                text: `锁屏失败: ${result.error || '未知错误'}`
             }
         }
 
@@ -793,6 +799,11 @@ button:disabled {
 .save-message.success {
     background-color: rgba(72, 187, 120, 0.1);
     color: #2f855a;
+}
+
+.save-message.info {
+    background-color: rgba(102, 126, 234, 0.1);
+    color: var(--primary);
 }
 
 .save-message.error {

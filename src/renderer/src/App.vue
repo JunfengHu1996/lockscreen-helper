@@ -28,8 +28,10 @@
         <div class="result-container">
           <result-message
             v-if="lockResult"
-            :type="lockResult.success ? 'success' : 'error'"
-            :message="lockResult.message || (lockResult.success ? '屏幕已锁定' : '锁屏失败')"
+            :type="resultType"
+            :message="resultMessage"
+            :closeable="!!lockResult.skipped"
+            @close="dismissLockResult"
           />
         </div>
         
@@ -41,7 +43,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useTimer } from './composables/useTimer'
 import { MODES, TIME_LIMITS } from './constants'
 
@@ -135,12 +137,35 @@ const handleLockResult = (result) => {
       clearCurrentMode()
     }
 
-    // 3秒后清除结果提示
-    setTimeout(() => {
-      lockResult.value = null
-    }, 3000)
+    // skipped 的消息永久保留（直到下次事件覆盖或用户手动关闭），
+    // 其他消息 3 秒后自动清除
+    if (!result.skipped) {
+      setTimeout(() => {
+        lockResult.value = null
+      }, 3000)
+    }
   }
 }
+
+// 手动关闭结果提示（给 skipped 消息用）
+const dismissLockResult = () => {
+  lockResult.value = null
+}
+
+// 根据 lockResult 派生展示用的 type 和 message
+const resultType = computed(() => {
+  if (!lockResult.value) return 'success'
+  if (lockResult.value.skipped) return 'info'
+  return lockResult.value.success ? 'success' : 'error'
+})
+
+const resultMessage = computed(() => {
+  if (!lockResult.value) return ''
+  if (lockResult.value.skipped) {
+    return lockResult.value.message || '系统已处于锁屏状态，跳过本次锁屏'
+  }
+  return lockResult.value.message || (lockResult.value.success ? '屏幕已锁定' : '锁屏失败')
+})
 
 // 新增：处理多次定时
 const handleMultiSchedules = (schedules) => {
@@ -184,8 +209,8 @@ const calculateScheduleDuration = (timeValue) => {
 
 // ============ 生命周期钩子 ============
 onMounted(() => {
-  // 监听锁屏结果
-  window.api.on('lock-screen-result', handleLockResult)
+  // 监听锁屏结果（事件名需与主进程的 event.reply 一致）
+  window.api.on('lock-execution-result', handleLockResult)
 })
 
 onUnmounted(() => {

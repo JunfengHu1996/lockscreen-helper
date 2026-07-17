@@ -30,7 +30,8 @@ const formatTime = (timestamp) => {
 // 监听锁屏结果
 const updateLastLockTime = () => {
   window.api.on('lock-execution-result', (result) => {
-    if (result.success) {
+    // 仅在真正锁屏成功时更新，跳过（skipped）时不更新，避免被定时器误覆盖
+    if (result.success && !result.skipped) {
       lastLockTime.value = new Date().toISOString()
       formattedTime.value = formatTime(lastLockTime.value)
     }
